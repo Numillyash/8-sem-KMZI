@@ -1,0 +1,2 @@
+Modified document D2. This content is preserved before the four-byte CRC32 patch.
+
