@@ -62,6 +62,42 @@ python scripts\generate_report_materials.py
 
 The script cleans `artifacts\report_run` and writes report-ready materials to `report\generated`.
 
+## Генерация материалов для отчёта
+
+```powershell
+cd C:\Users\Georgul\Documents\8_sem\KMZI\Lab2
+python scripts\generate_report_materials.py
+```
+
+Скрипт обновляет практические результаты, теоретические сведения, ответы на контрольные вопросы и черновик полного отчёта. Временные файлы запуска создаются в `artifacts\report_run` и не добавляются в Git.
+
+## Файлы отчёта
+
+- `report/generated/report_data.md` - практические результаты атак и проверок.
+- `report/generated/report_data.json` - те же данные в машинно-читаемом виде.
+- `report/generated/theory.md` - краткая теория по уязвимостям RSA.
+- `report/generated/control_questions.md` - ответы на контрольные вопросы.
+- `report/generated/stand_commands.md` - команды для демонстрации на защите.
+- `report/generated/full_report_draft.md` - собранный черновик отчёта.
+- `report/generated/verification_log.txt` - короткий лог успешных проверок.
+
+## Команды для защиты
+
+```powershell
+cd C:\Users\Georgul\Documents\8_sem\KMZI\Lab2
+.\.venv\Scripts\Activate.ps1
+pytest -q
+python scripts\generate_report_materials.py
+Get-Content .\report\generated\verification_log.txt -Encoding UTF8
+
+python -m src.main demo --out artifacts\demo_data
+python -m src.main common-modulus --json artifacts\demo_data\common_modulus.json
+python -m src.main wiener --json artifacts\demo_data\wiener.json
+python -m src.main broadcast --json artifacts\demo_data\broadcast.json
+python -m src.main small-order --json artifacts\demo_data\small_order.json
+python -m src.main safe-keygen --bits 512 --out artifacts\safe_key.json
+```
+
 ## Tests
 
 ```powershell

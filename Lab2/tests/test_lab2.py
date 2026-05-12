@@ -107,8 +107,14 @@ def test_report_generator_import_and_tmp_output(tmp_path: Path) -> None:
     module.generate_report_materials(tmp_path)
 
     generated = tmp_path / "report" / "generated"
-    assert (generated / "report_data.md").exists()
+    report_data = generated / "report_data.md"
+    assert report_data.exists()
     assert (generated / "report_data.json").exists()
+    assert (generated / "theory.md").exists()
+    assert (generated / "control_questions.md").exists()
+    assert (generated / "stand_commands.md").exists()
+    full_report = generated / "full_report_draft.md"
+    assert full_report.exists()
     verification_log = generated / "verification_log.txt"
     assert verification_log.exists()
     log_text = verification_log.read_text(encoding="utf-8")
@@ -118,3 +124,22 @@ def test_report_generator_import_and_tmp_output(tmp_path: Path) -> None:
     assert "small-order attack OK" in log_text
     assert "safe keygen OK" in log_text
     assert "Wiener attack against safe key NOT FOUND" in log_text
+
+    full_report_text = full_report.read_text(encoding="utf-8")
+    assert "Лабораторная работа №2" in full_report_text
+    assert "Атака общего модуля RSA" in full_report_text
+    assert "Атака Винера" in full_report_text
+    assert "Широковещательная атака" in full_report_text
+    assert "Бесключевое дешифрование" in full_report_text
+    assert "Генерация безопасных параметров RSA" in full_report_text
+    assert "Контрольные вопросы" in full_report_text
+
+    report_data_text = report_data.read_text(encoding="utf-8")
+    assert "not_performed" not in report_data_text
+    assert "cryptool_manual_check" not in report_data_text
+
+    mojibake_markers = ("Рџ", "Рґ", "СЊ", "С…")
+    for path in generated.glob("*.md"):
+        text = path.read_text(encoding="utf-8")
+        for marker in mojibake_markers:
+            assert marker not in text
