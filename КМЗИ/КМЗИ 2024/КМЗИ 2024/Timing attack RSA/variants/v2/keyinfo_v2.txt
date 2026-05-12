@@ -1,0 +1,3 @@
+BITS = 1024
+N = ab 54 d5 da 60 c4 4d 09 3b 3f e1 0e 14 3f 6b d4 22 8c d9 c3 25 42 94 ce 75 b5 fd ed 5a c4 2d b3 bc 17 31 b3 3c cf 45 45 e2 cf bc 4e b8 7a 10 40 da e7 58 6f 38 cf 71 a9 73 df 07 4a 52 7d c6 e7 e8 fc 76 18 87 19 1e b5 47 37 09 39 53 6a 06 e2 5f df 42 0d d3 22 d1 40 77 66 ea 65 41 ee c5 18 44 55 a0 d7 2e cf b5 fa 32 fa 13 f5 07 3d b8 48 c1 bd 32 e4 4d 81 53 cc a9 99 33 d6 d1 da 43 73
+E = 01 00 01
