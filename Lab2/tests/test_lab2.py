@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 import subprocess
 import sys
@@ -92,3 +93,28 @@ def test_cli_demo_smoke(tmp_path: Path) -> None:
     assert "Demo data written" in result.stdout
     assert json.loads((out / "common_modulus.json").read_text(encoding="utf-8"))["n"]
     assert json.loads((out / "demo_outputs.json").read_text(encoding="utf-8"))["small_order"]["recovered_m"]
+
+
+def test_report_generator_import_and_tmp_output(tmp_path: Path) -> None:
+    lab_root = Path(__file__).resolve().parents[1]
+    script_path = lab_root / "scripts" / "generate_report_materials.py"
+    spec = importlib.util.spec_from_file_location("lab2_generate_report_materials", script_path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    module.generate_report_materials(tmp_path)
+
+    generated = tmp_path / "report" / "generated"
+    assert (generated / "report_data.md").exists()
+    assert (generated / "report_data.json").exists()
+    verification_log = generated / "verification_log.txt"
+    assert verification_log.exists()
+    log_text = verification_log.read_text(encoding="utf-8")
+    assert "common modulus attack OK" in log_text
+    assert "Wiener attack OK" in log_text
+    assert "broadcast attack OK" in log_text
+    assert "small-order attack OK" in log_text
+    assert "safe keygen OK" in log_text
+    assert "Wiener attack against safe key NOT FOUND" in log_text

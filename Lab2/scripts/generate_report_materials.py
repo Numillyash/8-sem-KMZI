@@ -42,6 +42,24 @@ def _build_markdown(data: dict[str, Any]) -> str:
     broadcast = data["broadcast"]
     small = data["small_order"]
     safe = data["safe_keygen"]
+    common_recovered = (
+        f"p={common['recovered_p']}\n"
+        f"q={common['recovered_q']}\n"
+        f"d_a={common['recovered_d_a']}"
+    )
+    wiener_recovered = (
+        f"d_real={wiener['d_real']}\n"
+        f"recovered_d={wiener['recovered_d']}"
+    )
+    small_params = (
+        f"n={small['n']}\n"
+        f"e={small['e']}\n"
+        f"c={small['c']}"
+    )
+    safe_ed = (
+        f"e={safe['e']}\n"
+        f"d={safe['d']}"
+    )
     return f"""# Данные для отчёта Lab2
 
 ## 1. Атака общего модуля RSA
@@ -57,7 +75,7 @@ def _build_markdown(data: dict[str, Any]) -> str:
 {_code(common["d_b"])}
 
 **Восстановленные p, q, d_a:**
-{_code(f'p={common["recovered_p"]}\\nq={common["recovered_q"]}\\nd_a={common["recovered_d_a"]}')}
+{_code(common_recovered)}
 
 Проверка: **{"OK" if common["verification_ok"] else "FAIL"}**.
 
@@ -72,7 +90,7 @@ def _build_markdown(data: dict[str, Any]) -> str:
 {_code(wiener["e"])}
 
 **Реальный и восстановленный d:**
-{_code(f'd_real={wiener["d_real"]}\\nrecovered_d={wiener["recovered_d"]}')}
+{_code(wiener_recovered)}
 
 Проверка: **{"OK" if wiener["verification_ok"] else "FAIL"}**.
 
@@ -93,7 +111,7 @@ def _build_markdown(data: dict[str, Any]) -> str:
 Для учебного малого RSA-модуля показатель `e` имеет малый порядок по модулю `phi(n)`. Повторное возведение шифртекста в степень `e` возвращает цикл, где предыдущий элемент является исходным сообщением.
 
 **n, e, c:**
-{_code(f'n={small["n"]}\\ne={small["e"]}\\nc={small["c"]}')}
+{_code(small_params)}
 
 **m_real / recovered_m:** `{small["m_real"]}` / `{small["recovered_m"]}`
 
@@ -109,7 +127,7 @@ def _build_markdown(data: dict[str, Any]) -> str:
 {_code(safe["n"])}
 
 **e / d:**
-{_code(f'e={safe["e"]}\\nd={safe["d"]}')}
+{_code(safe_ed)}
 
 **Битовые длины:** модуль `{safe["analysis"]["modulus_bits"]}`, p `{safe["analysis"]["p_bits"]}`, q `{safe["analysis"]["q_bits"]}`.
 
