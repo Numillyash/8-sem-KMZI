@@ -11,7 +11,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-The implementation uses only the Python standard library for RSA, AES-256-CBC, ASN.1 DER encoding, SHA-256, and CRC32. `pytest` is required only for tests.
+The implementation uses only the Python standard library for RSA, AES-256-CBC, ASN.1 DER encoding, SHA-256, and CRC32. Encrypted files and signature files are stored as structured ASN.1 DER containers. `pytest` is required only for tests.
 
 ## CLI
 
@@ -93,3 +93,19 @@ EncryptedFile ::= SEQUENCE {
 ```
 
 `encryptedKey` is the RSA encryption of the 32-byte AES key. `ciphertext` is AES-256-CBC with PKCS#7 padding.
+
+## ASN.1 DER Signature Container
+
+Signature files with the `.sig` extension are also DER `SEQUENCE` containers:
+
+```text
+SignatureFile ::= SEQUENCE {
+  version        INTEGER,
+  algorithm      UTF8String,
+  hashValue      OCTET STRING,
+  hashModN       INTEGER,
+  signature      INTEGER
+}
+```
+
+The `algorithm` field is `rsa-sha256` or `rsa-crc32`. Verification recomputes the file hash and checks `hashValue`, `hashModN`, and the RSA signature value.

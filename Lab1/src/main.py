@@ -10,12 +10,12 @@ from src.crcforge import forge_crc32_file
 from src.hybrid import decrypt_file, encrypt_file
 from src.rsa import generate_keypair, load_private_key, load_public_key, save_private_key, save_public_key
 from src.signatures import (
+    create_crc32_container,
+    create_sha256_container,
     load_signature,
     save_signature,
-    sign_crc32,
-    sign_sha256,
-    verify_crc32,
-    verify_sha256,
+    verify_crc32_container,
+    verify_sha256_container,
 )
 
 
@@ -91,24 +91,32 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.command == "sign-sha256":
-            signature = sign_sha256(args.file.read_bytes(), load_private_key(args.private_key))
-            save_signature(args.signature, signature)
+            container = create_sha256_container(args.file.read_bytes(), load_private_key(args.private_key))
+            save_signature(args.signature, container)
             print(f"Signature saved to: {args.signature}")
             return 0
 
         if args.command == "verify-sha256":
-            ok = verify_sha256(args.file.read_bytes(), load_signature(args.signature), load_public_key(args.public_key))
+            ok = verify_sha256_container(
+                args.file.read_bytes(),
+                load_signature(args.signature),
+                load_public_key(args.public_key),
+            )
             print("VALID" if ok else "INVALID")
             return 0 if ok else 1
 
         if args.command == "sign-crc32":
-            signature = sign_crc32(args.file.read_bytes(), load_private_key(args.private_key))
-            save_signature(args.signature, signature)
+            container = create_crc32_container(args.file.read_bytes(), load_private_key(args.private_key))
+            save_signature(args.signature, container)
             print(f"Signature saved to: {args.signature}")
             return 0
 
         if args.command == "verify-crc32":
-            ok = verify_crc32(args.file.read_bytes(), load_signature(args.signature), load_public_key(args.public_key))
+            ok = verify_crc32_container(
+                args.file.read_bytes(),
+                load_signature(args.signature),
+                load_public_key(args.public_key),
+            )
             print("VALID" if ok else "INVALID")
             return 0 if ok else 1
 

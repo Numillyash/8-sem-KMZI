@@ -24,11 +24,12 @@ from src.crcforge import crc32_bytes, forge_crc32_file
 from src.hybrid import decrypt_file, encrypt_file
 from src.rsa import generate_keypair, save_private_key, save_public_key
 from src.signatures import (
+    create_crc32_container,
+    create_sha256_container,
+    load_signature_container,
     save_signature,
-    sign_crc32,
-    sign_sha256,
-    verify_crc32,
-    verify_sha256,
+    verify_crc32_container,
+    verify_sha256_container,
 )
 
 
@@ -134,6 +135,13 @@ DER-контейнер был разобран, AES-ключ расшифров�
 **Подпись RSA/SHA-256:**
 {_code_block(sha["signature_integer"])}
 
+РџРѕРґРїРёСЃСЊ С…СЂР°РЅРёС‚СЃСЏ РІ ASN.1 DER-РєРѕРЅС‚РµР№РЅРµСЂРµ `SignatureFile`.
+
+**DER RSA/SHA-256, first 100 bytes, hex:**
+```text
+{_hex_block(sha["signature_der_first_100_hex"])}
+```
+
 Проверка исходного файла: **{sha["original_verification"]}**.
 Проверка измененного файла: **{sha["modified_verification"]}**.
 
@@ -147,6 +155,13 @@ CRC32(D3): **{crc["d3_crc32_hex"]}** / **{crc["d3_crc32_decimal"]}**.
 
 **Подпись RSA/CRC32 для D1:**
 {_code_block(crc["signature_integer"])}
+
+РџРѕРґРїРёСЃСЊ RSA/CRC32 С…СЂР°РЅРёС‚СЃСЏ РІ ASN.1 DER-РєРѕРЅС‚РµР№РЅРµСЂРµ `SignatureFile`.
+
+**DER RSA/CRC32, first 100 bytes, hex:**
+```text
+{_hex_block(crc["signature_der_first_100_hex"])}
+```
 
 Проверка подписи D1: **{crc["d1_verification"]}**.
 
@@ -203,6 +218,18 @@ def _build_hex_dump(data: dict[str, Any]) -> str:
 
 ```text
 {_hex_block(files["container_first_100_hex"])}
+```
+
+## DER RSA/SHA-256 signature container, first 100 bytes
+
+```text
+{_hex_block(data["sha256_signature"]["signature_der_first_100_hex"])}
+```
+
+## DER RSA/CRC32 signature container, first 100 bytes
+
+```text
+{_hex_block(data["crc32_signature"]["signature_der_first_100_hex"])}
 ```
 
 ## Первые 100 байт AES ciphertext
@@ -285,27 +312,31 @@ def generate_report_materials(lab_root: Path | None = None, bits: int = 1024) ->
     container_bytes = encrypted_path.read_bytes()
 
     sha_signature_path = artifacts_dir / "message.sha256.sig"
-    sha_signature = sign_sha256(message, private_key)
-    save_signature(sha_signature_path, sha_signature)
-    sha_original_valid = verify_sha256(message, sha_signature, public_key)
+    sha_container = create_sha256_container(message, private_key)
+    save_signature(sha_signature_path, sha_container)
+    sha_loaded = load_signature_container(sha_signature_path)
+    sha_original_valid = verify_sha256_container(message, sha_loaded, public_key)
     modified_path = artifacts_dir / "message.modified.txt"
     modified_message = message + b"\nmodified for negative signature check\n"
     modified_path.write_bytes(modified_message)
-    sha_modified_valid = verify_sha256(modified_message, sha_signature, public_key)
+    sha_modified_valid = verify_sha256_container(modified_message, sha_loaded, public_key)
     sha_digest = hashlib.sha256(message).digest()
+    sha_signature_der = sha_signature_path.read_bytes()
 
     crc_signature_path = artifacts_dir / "d1.crc32.sig"
     d1_bytes = d1_path.read_bytes()
     d2_bytes = d2_path.read_bytes()
-    crc_signature = sign_crc32(d1_bytes, private_key)
-    save_signature(crc_signature_path, crc_signature)
-    crc_d1_valid = verify_crc32(d1_bytes, crc_signature, public_key)
+    crc_container = create_crc32_container(d1_bytes, private_key)
+    save_signature(crc_signature_path, crc_container)
+    crc_loaded = load_signature_container(crc_signature_path)
+    crc_d1_valid = verify_crc32_container(d1_bytes, crc_loaded, public_key)
+    crc_signature_der = crc_signature_path.read_bytes()
 
     d3_path = artifacts_dir / "d3.txt"
     forge_crc32_file(d1_path, d2_path, d3_path)
     d3_bytes = d3_path.read_bytes()
     patch = d3_bytes[len(d2_bytes) :]
-    crc_d3_old_signature_valid = verify_crc32(d3_bytes, crc_signature, public_key)
+    crc_d3_old_signature_valid = verify_crc32_container(d3_bytes, crc_loaded, public_key)
 
     d1_crc = crc32_bytes(d1_bytes)
     d2_crc = crc32_bytes(d2_bytes)
@@ -334,8 +365,9 @@ def generate_report_materials(lab_root: Path | None = None, bits: int = 1024) ->
         },
         "sha256_signature": {
             "digest_hex": sha_digest.hex(),
-            "h_sha256_mod_n": str(int.from_bytes(sha_digest, "big") % private_key.n),
-            "signature_integer": str(sha_signature),
+            "h_sha256_mod_n": str(sha_loaded.hash_mod_n),
+            "signature_integer": str(sha_loaded.signature),
+            "signature_der_first_100_hex": sha_signature_der[:100].hex(),
             "original_verification": _status(sha_original_valid),
             "modified_verification": _status(sha_modified_valid),
         },
@@ -351,7 +383,8 @@ def generate_report_materials(lab_root: Path | None = None, bits: int = 1024) ->
             "d3_size": len(d3_bytes),
             "d3_starts_with_d2": d3_bytes.startswith(d2_bytes),
             "d3_crc32_equals_d1": d3_crc == d1_crc,
-            "signature_integer": str(crc_signature),
+            "signature_integer": str(crc_loaded.signature),
+            "signature_der_first_100_hex": crc_signature_der[:100].hex(),
             "d1_verification": _status(crc_d1_valid),
             "d3_old_signature_verification": _status(crc_d3_old_signature_valid),
         },
@@ -376,4 +409,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

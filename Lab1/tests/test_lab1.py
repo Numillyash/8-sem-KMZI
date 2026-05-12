@@ -10,7 +10,19 @@ from src.aes import decrypt_block, encrypt_block
 from src.crcforge import crc32_bytes, forge_crc32_file
 from src.hybrid import decrypt_file, encrypt_file
 from src.rsa import generate_keypair
-from src.signatures import sign_crc32, sign_sha256, verify_crc32, verify_sha256
+from src.sigder import SignatureContainer
+from src.signatures import (
+    create_crc32_container,
+    create_sha256_container,
+    load_signature,
+    save_signature,
+    sign_crc32,
+    sign_sha256,
+    verify_crc32,
+    verify_crc32_container,
+    verify_sha256,
+    verify_sha256_container,
+)
 
 
 LAB_ROOT = Path(__file__).resolve().parents[1]
@@ -72,6 +84,20 @@ def test_sha256_signature_verifies_original_and_fails_modified() -> None:
     assert verify_sha256(modified, signature, public_key) is False
 
 
+def test_sha256_der_signature_file_verifies_original_and_fails_modified(tmp_path: Path) -> None:
+    private_key, public_key = generate_keypair(512)
+    original = b"original message"
+    modified = b"modified message"
+    signature_path = tmp_path / "message.sha256.sig"
+
+    save_signature(signature_path, create_sha256_container(original, private_key))
+    container = load_signature(signature_path)
+
+    assert signature_path.read_bytes().startswith(b"\x30")
+    assert verify_sha256_container(original, container, public_key) is True
+    assert verify_sha256_container(modified, container, public_key) is False
+
+
 def test_crc32_signature_verifies_original() -> None:
     private_key, public_key = generate_keypair(512)
     data = b"D1 document for CRC32 signature"
@@ -79,6 +105,18 @@ def test_crc32_signature_verifies_original() -> None:
     signature = sign_crc32(data, private_key)
 
     assert verify_crc32(data, signature, public_key) is True
+
+
+def test_crc32_der_signature_file_verifies_d1(tmp_path: Path) -> None:
+    private_key, public_key = generate_keypair(512)
+    data = b"D1 document for CRC32 signature"
+    signature_path = tmp_path / "d1.crc32.sig"
+
+    save_signature(signature_path, create_crc32_container(data, private_key))
+    container = load_signature(signature_path)
+
+    assert signature_path.read_bytes().startswith(b"\x30")
+    assert verify_crc32_container(data, container, public_key) is True
 
 
 def test_forge_crc32_preserves_d2_and_matches_d1_crc(tmp_path: Path) -> None:
@@ -110,6 +148,46 @@ def test_forged_d3_passes_old_crc32_signature() -> None:
     assert verify_crc32(d3, signature, public_key) is True
 
 
+def test_forged_d3_passes_old_crc32_der_signature(tmp_path: Path) -> None:
+    private_key, public_key = generate_keypair(512)
+    d1 = b"Signed D1 content"
+    d2 = b"Attacker-selected D2 content"
+    signature_path = tmp_path / "d1.crc32.sig"
+
+    from src.crcforge import crc32_patch_for_append
+
+    save_signature(signature_path, create_crc32_container(d1, private_key))
+    d3 = d2 + crc32_patch_for_append(d2, crc32_bytes(d1))
+
+    assert verify_crc32_container(d3, load_signature(signature_path), public_key) is True
+
+
+def test_der_signature_corruption_fails_verification(tmp_path: Path) -> None:
+    private_key, public_key = generate_keypair(512)
+    data = b"message"
+    signature_path = tmp_path / "message.sha256.sig"
+    save_signature(signature_path, create_sha256_container(data, private_key))
+    container = load_signature(signature_path)
+
+    bad_algorithm = SignatureContainer(
+        version=container.version,
+        algorithm="rsa-crc32",
+        hash_value=container.hash_value,
+        hash_mod_n=container.hash_mod_n,
+        signature=container.signature,
+    )
+    assert verify_sha256_container(data, bad_algorithm, public_key) is False
+
+    bad_signature = SignatureContainer(
+        version=container.version,
+        algorithm=container.algorithm,
+        hash_value=container.hash_value,
+        hash_mod_n=container.hash_mod_n,
+        signature=(container.signature + 1) % public_key.n,
+    )
+    assert verify_sha256_container(data, bad_signature, public_key) is False
+
+
 def test_report_generator_creates_expected_files(tmp_path: Path) -> None:
     data_dir = tmp_path / "data"
     data_dir.mkdir()
@@ -135,4 +213,6 @@ def test_report_generator_creates_expected_files(tmp_path: Path) -> None:
     assert data["files"]["decrypted_equals_original"] is True
     assert data["sha256_signature"]["original_verification"] == "VALID"
     assert data["sha256_signature"]["modified_verification"] == "INVALID"
+    assert data["sha256_signature"]["signature_der_first_100_hex"].startswith("30")
     assert data["crc32_signature"]["d3_crc32_equals_d1"] is True
+    assert data["crc32_signature"]["signature_der_first_100_hex"].startswith("30")
