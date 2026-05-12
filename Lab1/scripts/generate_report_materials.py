@@ -135,7 +135,7 @@ DER-контейнер был разобран, AES-ключ расшифров�
 **Подпись RSA/SHA-256:**
 {_code_block(sha["signature_integer"])}
 
-РџРѕРґРїРёСЃСЊ С…СЂР°РЅРёС‚СЃСЏ РІ ASN.1 DER-РєРѕРЅС‚РµР№РЅРµСЂРµ `SignatureFile`.
+Подпись хранится в ASN.1 DER-контейнере `SignatureFile`.
 
 **DER RSA/SHA-256, first 100 bytes, hex:**
 ```text
@@ -156,7 +156,7 @@ CRC32(D3): **{crc["d3_crc32_hex"]}** / **{crc["d3_crc32_decimal"]}**.
 **Подпись RSA/CRC32 для D1:**
 {_code_block(crc["signature_integer"])}
 
-РџРѕРґРїРёСЃСЊ RSA/CRC32 С…СЂР°РЅРёС‚СЃСЏ РІ ASN.1 DER-РєРѕРЅС‚РµР№РЅРµСЂРµ `SignatureFile`.
+Подпись RSA/CRC32 хранится в ASN.1 DER-контейнере `SignatureFile`.
 
 **DER RSA/CRC32, first 100 bytes, hex:**
 ```text
