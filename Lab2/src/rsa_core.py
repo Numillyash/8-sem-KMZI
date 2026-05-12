@@ -1,0 +1,88 @@
+"""Minimal RSA primitives for Lab2."""
+
+from __future__ import annotations
+
+import json
+from dataclasses import asdict, dataclass
+from pathlib import Path
+
+from .math_utils import gcd, generate_prime, mod_inverse
+
+
+@dataclass(frozen=True)
+class PublicKey:
+    n: int
+    e: int
+
+
+@dataclass(frozen=True)
+class PrivateKey:
+    n: int
+    e: int
+    d: int
+    p: int
+    q: int
+
+
+def generate_keypair_from_primes(p: int, q: int, e: int) -> tuple[PrivateKey, PublicKey]:
+    if p == q:
+        raise ValueError("p and q must be different")
+    phi = (p - 1) * (q - 1)
+    if gcd(e, phi) != 1:
+        raise ValueError("e must be coprime with phi")
+    n = p * q
+    d = mod_inverse(e, phi)
+    private = PrivateKey(n=n, e=e, d=d, p=p, q=q)
+    public = PublicKey(n=n, e=e)
+    return private, public
+
+
+def generate_keypair(bits: int = 1024, e: int = 65537) -> tuple[PrivateKey, PublicKey]:
+    if bits < 16:
+        raise ValueError("bits must be at least 16")
+    half = bits // 2
+    while True:
+        p = generate_prime(bits - half)
+        q = generate_prime(half)
+        if p == q:
+            continue
+        try:
+            return generate_keypair_from_primes(p, q, e)
+        except ValueError:
+            continue
+
+
+def encrypt_int(m: int, public_key: PublicKey) -> int:
+    if not 0 <= m < public_key.n:
+        raise ValueError("message representative out of range")
+    return pow(m, public_key.e, public_key.n)
+
+
+def decrypt_int(c: int, private_key: PrivateKey) -> int:
+    if not 0 <= c < private_key.n:
+        raise ValueError("ciphertext representative out of range")
+    return pow(c, private_key.d, private_key.n)
+
+
+def save_public_key(path: str | Path, public_key: PublicKey) -> None:
+    Path(path).write_text(json.dumps(asdict(public_key), indent=2), encoding="utf-8")
+
+
+def save_private_key(path: str | Path, private_key: PrivateKey) -> None:
+    Path(path).write_text(json.dumps(asdict(private_key), indent=2), encoding="utf-8")
+
+
+def load_public_key(path: str | Path) -> PublicKey:
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    return PublicKey(n=int(data["n"]), e=int(data["e"]))
+
+
+def load_private_key(path: str | Path) -> PrivateKey:
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    return PrivateKey(
+        n=int(data["n"]),
+        e=int(data["e"]),
+        d=int(data["d"]),
+        p=int(data["p"]),
+        q=int(data["q"]),
+    )

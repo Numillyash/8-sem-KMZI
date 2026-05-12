@@ -40,6 +40,12 @@ Lab1/.venv/
 __pycache__/
 .pytest_cache/
 
+### Lab2 generated files
+Lab2/artifacts/*
+!Lab2/artifacts/.gitkeep
+!Lab2/artifacts/README.md
+Lab2/.venv/
+
 # Jupyter Notebook
 .ipynb_checkpoints
 

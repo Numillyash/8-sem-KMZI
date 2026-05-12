@@ -1,0 +1,6 @@
+common modulus attack OK
+Wiener attack OK
+broadcast attack OK
+small-order attack OK
+safe keygen OK
+Wiener attack against safe key NOT FOUND
