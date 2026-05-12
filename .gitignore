@@ -32,6 +32,14 @@ htmlcov/
 # Type checkers
 .mypy_cache/
 
+### Lab1 generated files
+Lab1/artifacts/*
+!Lab1/artifacts/.gitkeep
+!Lab1/artifacts/README.md
+Lab1/.venv/
+__pycache__/
+.pytest_cache/
+
 # Jupyter Notebook
 .ipynb_checkpoints
 

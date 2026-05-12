@@ -31,6 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
     encrypt.add_argument("--file", type=Path, required=True)
     encrypt.add_argument("--public-key", type=Path, required=True)
     encrypt.add_argument("--out", type=Path, required=True)
+    encrypt.add_argument("--debug-json", type=Path, help="Write educational encryption debug report")
 
     decrypt = subparsers.add_parser("decrypt", help="Decrypt ASN.1 DER container")
     decrypt.add_argument("--file", type=Path, required=True)
@@ -78,8 +79,10 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.command == "encrypt":
-            encrypt_file(args.file, load_public_key(args.public_key), args.out)
+            encrypt_file(args.file, load_public_key(args.public_key), args.out, args.debug_json)
             print(f"Encrypted file saved to: {args.out}")
+            if args.debug_json:
+                print(f"Debug JSON saved to: {args.debug_json}")
             return 0
 
         if args.command == "decrypt":
@@ -124,4 +127,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))
-

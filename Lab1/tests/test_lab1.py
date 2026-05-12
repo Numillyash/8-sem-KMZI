@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from src.aes import decrypt_block, encrypt_block
@@ -32,6 +33,28 @@ def test_encrypt_decrypt_restores_original_file(tmp_path: Path) -> None:
 
     assert decrypted.read_bytes() == source.read_bytes()
     assert encrypted.read_bytes().startswith(b"\x30")
+
+
+def test_encrypt_debug_json_contains_key_and_iv(tmp_path: Path) -> None:
+    _, public_key = generate_keypair(512)
+    source = tmp_path / "message.txt"
+    encrypted = tmp_path / "message.enc"
+    debug_json = tmp_path / "encrypt_debug.json"
+    source.write_bytes(b"debug report test")
+
+    encrypt_file(source, public_key, encrypted, debug_json)
+    debug = json.loads(debug_json.read_text(encoding="utf-8"))
+
+    assert bytes.fromhex(debug["aes_key_hex"])
+    assert len(bytes.fromhex(debug["aes_key_hex"])) == 32
+    assert len(bytes.fromhex(debug["iv_hex"])) == 16
+    assert set(debug) == {
+        "aes_key_hex",
+        "iv_hex",
+        "encrypted_key_hex",
+        "ciphertext_first_100_hex",
+        "container_first_100_hex",
+    }
 
 
 def test_sha256_signature_verifies_original_and_fails_modified() -> None:
@@ -81,4 +104,3 @@ def test_forged_d3_passes_old_crc32_signature() -> None:
     d3 = d2 + crc32_patch_for_append(d2, crc32_bytes(d1))
 
     assert verify_crc32(d3, signature, public_key) is True
-

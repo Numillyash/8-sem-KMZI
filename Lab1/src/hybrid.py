@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import secrets
 from pathlib import Path
 
@@ -21,21 +22,45 @@ AES_KEY_SIZE = 32
 CONTAINER_VERSION = 1
 
 
-def encrypt_file(input_path: Path, public_key: PublicKey, output_path: Path) -> None:
+def encrypt_file(
+    input_path: Path,
+    public_key: PublicKey,
+    output_path: Path,
+    debug_json_path: Path | None = None,
+) -> None:
     plaintext = input_path.read_bytes()
     aes_key = secrets.token_bytes(AES_KEY_SIZE)
     iv = secrets.token_bytes(BLOCK_SIZE)
 
     encrypted_key_int = encrypt_integer(int_from_bytes(aes_key), public_key)
     rsa_size = (public_key.n.bit_length() + 7) // 8
+    encrypted_key = int_to_fixed_bytes(encrypted_key_int, rsa_size)
+    ciphertext = encrypt_cbc(plaintext, aes_key, iv)
     container = EncryptedFileContainer(
         version=CONTAINER_VERSION,
-        encrypted_key=int_to_fixed_bytes(encrypted_key_int, rsa_size),
+        encrypted_key=encrypted_key,
         iv=iv,
-        ciphertext=encrypt_cbc(plaintext, aes_key, iv),
+        ciphertext=ciphertext,
     )
+    container_der = encode_container(container)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_bytes(encode_container(container))
+    output_path.write_bytes(container_der)
+
+    if debug_json_path is not None:
+        debug_json_path.parent.mkdir(parents=True, exist_ok=True)
+        debug_json_path.write_text(
+            json.dumps(
+                {
+                    "aes_key_hex": aes_key.hex(),
+                    "iv_hex": iv.hex(),
+                    "encrypted_key_hex": encrypted_key.hex(),
+                    "ciphertext_first_100_hex": ciphertext[:100].hex(),
+                    "container_first_100_hex": container_der[:100].hex(),
+                },
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
 
 
 def decrypt_file(input_path: Path, private_key: PrivateKey, output_path: Path) -> None:
@@ -52,4 +77,3 @@ def decrypt_file(input_path: Path, private_key: PrivateKey, output_path: Path) -
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_bytes(plaintext)
-
