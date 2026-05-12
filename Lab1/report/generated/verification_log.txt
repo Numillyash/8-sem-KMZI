@@ -1,0 +1,9 @@
+key generation OK
+encryption OK
+decryption OK
+decrypted equals original OK
+SHA-256 signature original VALID
+SHA-256 signature modified INVALID
+CRC32 D1 signature VALID
+CRC32(D3) == CRC32(D1) OK
+CRC32 D3 with old signature VALID

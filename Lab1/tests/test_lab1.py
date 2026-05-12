@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import importlib.util
 from pathlib import Path
 
 from src.aes import decrypt_block, encrypt_block
@@ -10,6 +11,9 @@ from src.crcforge import crc32_bytes, forge_crc32_file
 from src.hybrid import decrypt_file, encrypt_file
 from src.rsa import generate_keypair
 from src.signatures import sign_crc32, sign_sha256, verify_crc32, verify_sha256
+
+
+LAB_ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_aes256_known_block_vector() -> None:
@@ -104,3 +108,31 @@ def test_forged_d3_passes_old_crc32_signature() -> None:
     d3 = d2 + crc32_patch_for_append(d2, crc32_bytes(d1))
 
     assert verify_crc32(d3, signature, public_key) is True
+
+
+def test_report_generator_creates_expected_files(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    (data_dir / "message.txt").write_text("Report generator message", encoding="utf-8")
+    (data_dir / "d1.txt").write_text("CRC32 original D1", encoding="utf-8")
+    (data_dir / "d2.txt").write_text("CRC32 modified D2", encoding="utf-8")
+
+    script_path = LAB_ROOT / "scripts" / "generate_report_materials.py"
+    spec = importlib.util.spec_from_file_location("generate_report_materials", script_path)
+    assert spec is not None
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+
+    data = module.generate_report_materials(tmp_path, bits=512)
+    generated_dir = tmp_path / "report" / "generated"
+
+    assert (generated_dir / "report_data.md").exists()
+    assert (generated_dir / "report_data.json").exists()
+    assert (generated_dir / "verification_log.txt").exists()
+    assert (generated_dir / "hex_dump.md").exists()
+    assert (generated_dir / "crc32_demo.md").exists()
+    assert data["files"]["decrypted_equals_original"] is True
+    assert data["sha256_signature"]["original_verification"] == "VALID"
+    assert data["sha256_signature"]["modified_verification"] == "INVALID"
+    assert data["crc32_signature"]["d3_crc32_equals_d1"] is True

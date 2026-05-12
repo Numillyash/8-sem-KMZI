@@ -65,6 +65,20 @@ pytest -q
 
 The tests check hybrid encryption/decryption, RSA/SHA-256 signatures, RSA/CRC32 signatures, and the deterministic CRC32 four-byte append forgery.
 
+## Генерация данных для отчёта
+
+```powershell
+python scripts\generate_report_materials.py
+```
+
+Скрипт создает временные файлы запуска в `artifacts\report_run` и готовые материалы для отчета в:
+
+```text
+report\generated
+```
+
+Файлы из `report\generated` можно использовать для вставки в итоговый отчет.
+
 ## ASN.1 DER Container
 
 Encrypted files are stored as a DER `SEQUENCE`:
