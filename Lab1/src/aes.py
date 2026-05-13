@@ -1,16 +1,20 @@
-"""Pure-Python AES-256-CBC with PKCS#7 padding.
+"""Учебная реализация AES-256-CBC с дополнением PKCS#7.
 
-This module keeps the AES operations visible for educational purposes. It is
-not constant-time and should not be used as a production cryptographic library.
+Операции AES оставлены явно видимыми для отчета. Код не является constant-time
+и не должен использоваться как промышленная криптографическая библиотека.
 """
 
 from __future__ import annotations
 
+# AES работает с блоком 128 бит: 16 байт или 4 слова по 32 бита.
 BLOCK_SIZE = 16
 NB = 4
+
+# Для AES-256 ключ содержит 8 слов, а число раундов равно 14.
 NK = 8
 NR = 14
 
+# S_BOX и INV_S_BOX реализуют нелинейную замену байтов SubBytes и обратную замену.
 S_BOX = [
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
     0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0, 0xAD, 0xD4, 0xA2, 0xAF, 0x9C, 0xA4, 0x72, 0xC0,
@@ -64,6 +68,7 @@ def _xtime(value: int) -> int:
 
 
 def _mul(a: int, b: int) -> int:
+    # Умножение байтов в поле GF(2^8), которое используется в MixColumns.
     result = 0
     for _ in range(8):
         if b & 1:
@@ -74,6 +79,7 @@ def _mul(a: int, b: int) -> int:
 
 
 def _bytes_to_state(block: bytes) -> list[list[int]]:
+    # AES хранит блок как матрицу 4x4 по столбцам: state[row][col].
     return [[block[row + 4 * col] for col in range(4)] for row in range(4)]
 
 
@@ -90,6 +96,7 @@ def _rot_word(word: list[int]) -> list[int]:
 
 
 def _expand_key(key: bytes) -> list[list[list[int]]]:
+    # Key schedule разворачивает исходный 256-битный ключ в набор раундовых ключей.
     if len(key) != 32:
         raise ValueError("AES-256 key must be exactly 32 bytes")
 
@@ -115,34 +122,40 @@ def _expand_key(key: bytes) -> list[list[list[int]]]:
 
 
 def _add_round_key(state: list[list[int]], round_key: list[list[int]]) -> None:
+    # AddRoundKey смешивает состояние с раундовым ключом через XOR.
     for row in range(4):
         for col in range(4):
             state[row][col] ^= round_key[row][col]
 
 
 def _sub_bytes(state: list[list[int]]) -> None:
+    # SubBytes заменяет каждый байт через S_BOX, добавляя нелинейность.
     for row in range(4):
         for col in range(4):
             state[row][col] = S_BOX[state[row][col]]
 
 
 def _inv_sub_bytes(state: list[list[int]]) -> None:
+    # Обратная операция SubBytes для расшифрования.
     for row in range(4):
         for col in range(4):
             state[row][col] = INV_S_BOX[state[row][col]]
 
 
 def _shift_rows(state: list[list[int]]) -> None:
+    # ShiftRows циклически сдвигает строки, распределяя байты по столбцам.
     for row in range(1, 4):
         state[row] = state[row][row:] + state[row][:row]
 
 
 def _inv_shift_rows(state: list[list[int]]) -> None:
+    # Обратный сдвиг строк восстанавливает порядок перед обратным SubBytes.
     for row in range(1, 4):
         state[row] = state[row][-row:] + state[row][:-row]
 
 
 def _mix_columns(state: list[list[int]]) -> None:
+    # MixColumns перемешивает каждый столбец с помощью арифметики GF(2^8).
     for col in range(4):
         a0, a1, a2, a3 = (state[row][col] for row in range(4))
         state[0][col] = _mul(a0, 2) ^ _mul(a1, 3) ^ a2 ^ a3
@@ -152,6 +165,7 @@ def _mix_columns(state: list[list[int]]) -> None:
 
 
 def _inv_mix_columns(state: list[list[int]]) -> None:
+    # Обратное перемешивание столбцов используется при расшифровании блока.
     for col in range(4):
         a0, a1, a2, a3 = (state[row][col] for row in range(4))
         state[0][col] = _mul(a0, 14) ^ _mul(a1, 11) ^ _mul(a2, 13) ^ _mul(a3, 9)
@@ -161,6 +175,8 @@ def _inv_mix_columns(state: list[list[int]]) -> None:
 
 
 def encrypt_block(block: bytes, key: bytes) -> bytes:
+    # Структура AES: начальный AddRoundKey, затем 13 полных раундов и финальный
+    # раунд без MixColumns.
     if len(block) != BLOCK_SIZE:
         raise ValueError("AES block must be exactly 16 bytes")
     state = _bytes_to_state(block)
@@ -178,6 +194,7 @@ def encrypt_block(block: bytes, key: bytes) -> bytes:
 
 
 def decrypt_block(block: bytes, key: bytes) -> bytes:
+    # Расшифрование применяет обратные преобразования в обратном порядке раундов.
     if len(block) != BLOCK_SIZE:
         raise ValueError("AES block must be exactly 16 bytes")
     state = _bytes_to_state(block)
@@ -195,11 +212,13 @@ def decrypt_block(block: bytes, key: bytes) -> bytes:
 
 
 def pkcs7_pad(data: bytes) -> bytes:
+    # PKCS#7 всегда добавляет от 1 до 16 байт, даже если данные кратны блоку.
     padding_len = BLOCK_SIZE - (len(data) % BLOCK_SIZE)
     return data + bytes([padding_len]) * padding_len
 
 
 def pkcs7_unpad(data: bytes) -> bytes:
+    # При снятии padding проверяем все байты дополнения, чтобы обнаружить порчу.
     if not data or len(data) % BLOCK_SIZE != 0:
         raise ValueError("invalid padded plaintext length")
     padding_len = data[-1]
@@ -211,6 +230,8 @@ def pkcs7_unpad(data: bytes) -> bytes:
 
 
 def encrypt_cbc(plaintext: bytes, key: bytes, iv: bytes) -> bytes:
+    # CBC: перед шифрованием каждый блок XOR-ится с предыдущим ciphertext.
+    # Для первого блока используется случайный IV.
     if len(iv) != BLOCK_SIZE:
         raise ValueError("AES-CBC IV must be exactly 16 bytes")
     ciphertext = bytearray()
@@ -225,6 +246,7 @@ def encrypt_cbc(plaintext: bytes, key: bytes, iv: bytes) -> bytes:
 
 
 def decrypt_cbc(ciphertext: bytes, key: bytes, iv: bytes) -> bytes:
+    # При CBC-расшифровании результат AES^-1 XOR-ится с предыдущим ciphertext.
     if len(iv) != BLOCK_SIZE:
         raise ValueError("AES-CBC IV must be exactly 16 bytes")
     if len(ciphertext) == 0 or len(ciphertext) % BLOCK_SIZE != 0:

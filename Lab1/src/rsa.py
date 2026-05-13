@@ -1,7 +1,8 @@
-"""Small educational RSA implementation.
+"""Учебная реализация RSA.
 
-The code is intentionally explicit: it is suitable for a lab assignment, but it
-does not implement production padding schemes such as OAEP or PSS.
+Код намеренно оставлен явным для лабораторной работы. Здесь нет промышленных
+схем дополнения вроде OAEP/PSS, поэтому модуль не предназначен для реальной
+защиты данных.
 """
 
 from __future__ import annotations
@@ -32,6 +33,8 @@ class PrivateKey:
 
 
 def _egcd(a: int, b: int) -> tuple[int, int, int]:
+    # Расширенный алгоритм Евклида находит gcd(a, b) и коэффициенты x, y:
+    # a*x + b*y = gcd(a, b). Эти коэффициенты нужны для обратного элемента.
     if b == 0:
         return a, 1, 0
     g, x1, y1 = _egcd(b, a % b)
@@ -39,6 +42,8 @@ def _egcd(a: int, b: int) -> tuple[int, int, int]:
 
 
 def mod_inverse(a: int, m: int) -> int:
+    # Обратный элемент a^(-1) mod m существует только при gcd(a, m) = 1.
+    # В RSA это условие проверяется для e и phi(n).
     g, x, _ = _egcd(a, m)
     if g != 1:
         raise ValueError("inverse does not exist")
@@ -46,6 +51,8 @@ def mod_inverse(a: int, m: int) -> int:
 
 
 def _is_probable_prime(n: int, rounds: int = 32) -> bool:
+    # Тест Миллера-Рабина: вероятностная проверка простоты больших чисел.
+    # Для учебной генерации ключей он значительно быстрее полного перебора.
     if n < 2:
         return False
     small_primes = (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37)
@@ -55,6 +62,7 @@ def _is_probable_prime(n: int, rounds: int = 32) -> bool:
         if n % prime == 0:
             return False
 
+    # Представляем n - 1 как d * 2^s, где d нечетно.
     d = n - 1
     s = 0
     while d % 2 == 0:
@@ -79,6 +87,7 @@ def _generate_prime(bits: int) -> int:
     if bits < 16:
         raise ValueError("prime size is too small")
     while True:
+        # Старший бит фиксирует требуемую длину, младший бит делает число нечетным.
         candidate = secrets.randbits(bits)
         candidate |= (1 << (bits - 1)) | 1
         if _is_probable_prime(candidate):
@@ -91,6 +100,7 @@ def generate_keypair(bits: int = 1024) -> tuple[PrivateKey, PublicKey]:
 
     half = bits // 2
     while True:
+        # Генерируем два независимых простых p и q, затем считаем n и phi(n).
         p = _generate_prime(half)
         q = _generate_prime(bits - half)
         if p == q:
@@ -99,6 +109,7 @@ def generate_keypair(bits: int = 1024) -> tuple[PrivateKey, PublicKey]:
         if math.gcd(PUBLIC_EXPONENT, phi) != 1:
             continue
         n = p * q
+        # Закрытая экспонента d является обратной к e по модулю phi(n).
         d = mod_inverse(PUBLIC_EXPONENT, phi)
         private = PrivateKey(n=n, e=PUBLIC_EXPONENT, d=d, p=p, q=q)
         public = PublicKey(n=n, e=PUBLIC_EXPONENT)
@@ -106,18 +117,21 @@ def generate_keypair(bits: int = 1024) -> tuple[PrivateKey, PublicKey]:
 
 
 def encrypt_integer(message: int, public_key: PublicKey) -> int:
+    # Базовая операция RSA без padding: c = m^e mod n.
     if not 0 <= message < public_key.n:
         raise ValueError("RSA message representative is out of range")
     return pow(message, public_key.e, public_key.n)
 
 
 def decrypt_integer(ciphertext: int, private_key: PrivateKey) -> int:
+    # Обратная операция RSA: m = c^d mod n.
     if not 0 <= ciphertext < private_key.n:
         raise ValueError("RSA ciphertext representative is out of range")
     return pow(ciphertext, private_key.d, private_key.n)
 
 
 def save_private_key(path: Path, key: PrivateKey) -> None:
+    # JSON выбран как простой формат для отчета и ручной проверки параметров RSA.
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps(key.__dict__, indent=2, sort_keys=True),
@@ -126,6 +140,7 @@ def save_private_key(path: Path, key: PrivateKey) -> None:
 
 
 def save_public_key(path: Path, key: PublicKey) -> None:
+    # Открытый ключ хранит только n и e, поэтому его можно передавать проверяющему.
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps(key.__dict__, indent=2, sort_keys=True),
@@ -134,6 +149,7 @@ def save_public_key(path: Path, key: PublicKey) -> None:
 
 
 def load_private_key(path: Path) -> PrivateKey:
+    # При загрузке явно приводим поля к int, чтобы не зависеть от деталей JSON-парсера.
     data = json.loads(path.read_text(encoding="utf-8"))
     return PrivateKey(
         n=int(data["n"]),
@@ -145,6 +161,7 @@ def load_private_key(path: Path) -> PrivateKey:
 
 
 def load_public_key(path: Path) -> PublicKey:
+    # Открытый ключ используется для шифрования AES-ключа и проверки подписей.
     data = json.loads(path.read_text(encoding="utf-8"))
     return PublicKey(n=int(data["n"]), e=int(data["e"]))
 
@@ -155,4 +172,3 @@ def int_to_fixed_bytes(value: int, length: int) -> bytes:
 
 def int_from_bytes(data: bytes) -> int:
     return int.from_bytes(data, byteorder="big")
-

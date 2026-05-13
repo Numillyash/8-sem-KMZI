@@ -1,4 +1,4 @@
-"""Minimal DER encoder/decoder for the hybrid-encryption container."""
+"""Минимальный DER-кодер/декодер для контейнера гибридного шифрования."""
 
 from __future__ import annotations
 
@@ -7,6 +7,8 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class EncryptedFileContainer:
+    """ASN.1 SEQUENCE с RSA-зашифрованным AES-ключом и AES-CBC ciphertext."""
+
     version: int
     encrypted_key: bytes
     iv: bytes
@@ -14,6 +16,8 @@ class EncryptedFileContainer:
 
 
 def _encode_length(length: int) -> bytes:
+    # DER использует TLV: Tag, Length, Value. Длина кодируется в короткой форме
+    # для значений < 128 и в длинной форме для больших полей.
     if length < 0:
         raise ValueError("negative DER length")
     if length < 128:
@@ -27,6 +31,8 @@ def _encode_tlv(tag: int, value: bytes) -> bytes:
 
 
 def _encode_integer(value: int) -> bytes:
+    # INTEGER в DER знаковый. Для положительных чисел с установленным старшим
+    # битом добавляется ведущий 00, чтобы значение не трактовалось как отрицательное.
     if value < 0:
         raise ValueError("only non-negative integers are supported")
     raw = b"\x00" if value == 0 else value.to_bytes((value.bit_length() + 7) // 8, "big")
@@ -36,10 +42,12 @@ def _encode_integer(value: int) -> bytes:
 
 
 def _encode_octet_string(value: bytes) -> bytes:
+    # OCTET STRING хранит произвольные байты: RSA-блок, IV и ciphertext.
     return _encode_tlv(0x04, value)
 
 
 def encode_container(container: EncryptedFileContainer) -> bytes:
+    # EncryptedFile ::= SEQUENCE { version, encryptedKey, iv, ciphertext }.
     body = b"".join(
         (
             _encode_integer(container.version),
@@ -52,6 +60,7 @@ def encode_container(container: EncryptedFileContainer) -> bytes:
 
 
 def _read_length(data: bytes, offset: int) -> tuple[int, int]:
+    # При декодировании проверяем корректность DER-длины и запрещаем BER indefinite form.
     if offset >= len(data):
         raise ValueError("unexpected end of DER data")
     first = data[offset]
@@ -70,6 +79,7 @@ def _read_length(data: bytes, offset: int) -> tuple[int, int]:
 
 
 def _read_tlv(data: bytes, offset: int, expected_tag: int) -> tuple[bytes, int]:
+    # Каждое поле читается с ожидаемым tag, чтобы контейнер имел заданную структуру.
     if offset >= len(data) or data[offset] != expected_tag:
         raise ValueError(f"expected DER tag 0x{expected_tag:02x}")
     length, value_offset = _read_length(data, offset + 1)
@@ -86,6 +96,7 @@ def _decode_integer(value: bytes) -> int:
 
 
 def decode_container(data: bytes) -> EncryptedFileContainer:
+    # Декодер проверяет отсутствие лишних байтов снаружи и внутри SEQUENCE.
     body, offset = _read_tlv(data, 0, 0x30)
     if offset != len(data):
         raise ValueError("trailing data after DER sequence")
@@ -104,4 +115,3 @@ def decode_container(data: bytes) -> EncryptedFileContainer:
         iv=iv,
         ciphertext=ciphertext,
     )
-

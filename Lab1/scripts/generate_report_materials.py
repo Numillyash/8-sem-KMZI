@@ -1,8 +1,8 @@
-"""Generate reproducible report materials for KMZI Lab1.
+"""Генерация воспроизводимых материалов для отчета по KMZI Lab1.
 
-The script uses only the existing Lab1 implementation and the Python standard
-library. It writes transient cryptographic artifacts into artifacts/report_run
-and report-ready files into report/generated.
+Скрипт использует только существующую реализацию Lab1 и стандартную библиотеку.
+Случайные RSA/AES значения могут меняться при каждом запуске, но структура
+выходных Markdown/JSON/TXT файлов остается одинаковой.
 """
 
 from __future__ import annotations
@@ -47,6 +47,7 @@ REPORT_FILES = (
 
 
 def _clean_dir(path: Path) -> None:
+    # artifacts/report_run хранит временные ключи, подписи и шифртексты одного запуска.
     if path.exists():
         shutil.rmtree(path)
     path.mkdir(parents=True, exist_ok=True)
@@ -210,6 +211,7 @@ D3 начинается с полного содержимого D2: **{"OK" if 
 
 
 def _build_verification_log(data: dict[str, Any]) -> str:
+    # Краткий журнал нужен для приложения к отчету и быстрой проверки результатов.
     files = data["files"]
     sha = data["sha256_signature"]
     crc = data["crc32_signature"]
@@ -493,7 +495,7 @@ def _build_full_report_draft(report_data: str, theory: str, control_questions: s
 
 
 def generate_report_materials(lab_root: Path | None = None, bits: int = 1024) -> dict[str, Any]:
-    """Generate report materials and return collected machine-readable data."""
+    """Сформировать материалы отчета и вернуть собранные данные."""
     root = (lab_root or DEFAULT_LAB_ROOT).resolve()
     if str(root) not in sys.path:
         sys.path.insert(0, str(root))
@@ -501,6 +503,8 @@ def generate_report_materials(lab_root: Path | None = None, bits: int = 1024) ->
     data_dir = root / "data"
     artifacts_dir = root / "artifacts" / "report_run"
     generated_dir = root / "report" / "generated"
+    # Временные артефакты очищаются, а report/generated остается папкой
+    # с готовыми для вставки в отчет материалами.
     _clean_dir(artifacts_dir)
     generated_dir.mkdir(parents=True, exist_ok=True)
 
@@ -508,6 +512,7 @@ def generate_report_materials(lab_root: Path | None = None, bits: int = 1024) ->
     d1_path = data_dir / "d1.txt"
     d2_path = data_dir / "d2.txt"
 
+    # 1. Генерация RSA-ключей и сохранение параметров p, q, n, e, d.
     private_key, public_key = generate_keypair(bits)
     private_key_path = artifacts_dir / "private.json"
     public_key_path = artifacts_dir / "public.json"
@@ -517,7 +522,9 @@ def generate_report_materials(lab_root: Path | None = None, bits: int = 1024) ->
     encrypted_path = artifacts_dir / "message.enc"
     decrypted_path = artifacts_dir / "message.dec"
     debug_json_path = artifacts_dir / "encrypt_debug.json"
+    # 2. Гибридное шифрование файла и debug JSON с AES/DER значениями.
     encrypt_file(message_path, public_key, encrypted_path, debug_json_path)
+    # 3. Расшифрование и байтовое сравнение с исходным файлом.
     decrypt_file(encrypted_path, private_key, decrypted_path)
 
     message = message_path.read_bytes()
@@ -526,6 +533,7 @@ def generate_report_materials(lab_root: Path | None = None, bits: int = 1024) ->
     container_bytes = encrypted_path.read_bytes()
 
     sha_signature_path = artifacts_dir / "message.sha256.sig"
+    # 4. RSA/SHA-256 подпись: проверяем исходный файл и отрицательный пример.
     sha_container = create_sha256_container(message, private_key)
     save_signature(sha_signature_path, sha_container)
     sha_loaded = load_signature_container(sha_signature_path)
@@ -540,6 +548,7 @@ def generate_report_materials(lab_root: Path | None = None, bits: int = 1024) ->
     crc_signature_path = artifacts_dir / "d1.crc32.sig"
     d1_bytes = d1_path.read_bytes()
     d2_bytes = d2_path.read_bytes()
+    # 5. RSA/CRC32 подпись для D1 как часть дополнительного задания.
     crc_container = create_crc32_container(d1_bytes, private_key)
     save_signature(crc_signature_path, crc_container)
     crc_loaded = load_signature_container(crc_signature_path)
@@ -547,6 +556,7 @@ def generate_report_materials(lab_root: Path | None = None, bits: int = 1024) ->
     crc_signature_der = crc_signature_path.read_bytes()
 
     d3_path = artifacts_dir / "d3.txt"
+    # 6. Построение D3 = D2 || patch без перебора 2^32 вариантов.
     forge_crc32_file(d1_path, d2_path, d3_path)
     d3_bytes = d3_path.read_bytes()
     patch = d3_bytes[len(d2_bytes) :]
@@ -610,6 +620,7 @@ def generate_report_materials(lab_root: Path | None = None, bits: int = 1024) ->
     stand_commands = _build_stand_commands()
     full_report = _build_full_report_draft(report_data, theory, control_questions)
 
+    # 7. Запись машинно-читаемых и человеко-читаемых файлов отчета.
     _write_json(generated_dir / "report_data.json", data)
     (generated_dir / "report_data.md").write_text(report_data, encoding="utf-8")
     (generated_dir / "verification_log.txt").write_text(_build_verification_log(data), encoding="utf-8")

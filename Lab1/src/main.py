@@ -1,4 +1,4 @@
-"""Command-line interface for KMZI Lab1."""
+"""CLI-интерфейс для команд KMZI Lab1."""
 
 from __future__ import annotations
 
@@ -20,6 +20,8 @@ from src.signatures import (
 
 
 def build_parser() -> argparse.ArgumentParser:
+    # Все лабораторные действия оформлены как subcommands, чтобы имена команд
+    # оставались стабильными для демонстрации и отчета.
     parser = argparse.ArgumentParser(prog="python -m src.main", description="KMZI Lab1 RSA/AES tools")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -72,6 +74,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.command == "keygen":
+            # keygen создает пару RSA-ключей и сохраняет их в JSON для отчета.
             private, public = generate_keypair(args.bits)
             save_private_key(args.out / "private.json", private)
             save_public_key(args.out / "public.json", public)
@@ -79,6 +82,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.command == "encrypt":
+            # encrypt формирует ASN.1 DER-контейнер с RSA-wrapped AES key и ciphertext.
             encrypt_file(args.file, load_public_key(args.public_key), args.out, args.debug_json)
             print(f"Encrypted file saved to: {args.out}")
             if args.debug_json:
@@ -86,17 +90,20 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.command == "decrypt":
+            # decrypt разбирает DER-контейнер и восстанавливает исходный файл.
             decrypt_file(args.file, load_private_key(args.private_key), args.out)
             print(f"Decrypted file saved to: {args.out}")
             return 0
 
         if args.command == "sign-sha256":
+            # Подпись сохраняется не как текстовое число, а как DER SignatureFile.
             container = create_sha256_container(args.file.read_bytes(), load_private_key(args.private_key))
             save_signature(args.signature, container)
             print(f"Signature saved to: {args.signature}")
             return 0
 
         if args.command == "verify-sha256":
+            # INVALID возвращает код 1, чтобы CLI можно было использовать в скриптах.
             ok = verify_sha256_container(
                 args.file.read_bytes(),
                 load_signature(args.signature),
@@ -106,12 +113,14 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if ok else 1
 
         if args.command == "sign-crc32":
+            # CRC32-подпись нужна для демонстрации дополнительного задания.
             container = create_crc32_container(args.file.read_bytes(), load_private_key(args.private_key))
             save_signature(args.signature, container)
             print(f"Signature saved to: {args.signature}")
             return 0
 
         if args.command == "verify-crc32":
+            # Проверка CRC32 использует тот же DER-контейнер, но другой algorithm id.
             ok = verify_crc32_container(
                 args.file.read_bytes(),
                 load_signature(args.signature),
@@ -121,11 +130,13 @@ def main(argv: list[str] | None = None) -> int:
             return 0 if ok else 1
 
         if args.command == "forge-crc32":
+            # forge-crc32 строит D3 = D2 || patch для совпадения CRC32 с D1.
             forge_crc32_file(args.original, args.modified, args.out)
             print(f"Forged file saved to: {args.out}")
             return 0
 
     except (OSError, ValueError) as exc:
+        # Верхний уровень CLI превращает ошибки файлов/формата в понятный код 1.
         print(f"ERROR: {exc}")
         return 1
 
