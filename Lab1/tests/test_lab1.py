@@ -210,9 +210,30 @@ def test_report_generator_creates_expected_files(tmp_path: Path) -> None:
     assert (generated_dir / "verification_log.txt").exists()
     assert (generated_dir / "hex_dump.md").exists()
     assert (generated_dir / "crc32_demo.md").exists()
+    assert (generated_dir / "theory.md").exists()
+    assert (generated_dir / "control_questions.md").exists()
+    assert (generated_dir / "stand_commands.md").exists()
+    full_report = generated_dir / "full_report_draft.md"
+    assert full_report.exists()
     assert data["files"]["decrypted_equals_original"] is True
     assert data["sha256_signature"]["original_verification"] == "VALID"
     assert data["sha256_signature"]["modified_verification"] == "INVALID"
     assert data["sha256_signature"]["signature_der_first_100_hex"].startswith("30")
     assert data["crc32_signature"]["d3_crc32_equals_d1"] is True
     assert data["crc32_signature"]["signature_der_first_100_hex"].startswith("30")
+
+    full_report_text = full_report.read_text(encoding="utf-8")
+    assert "Лабораторная работа №1" in full_report_text
+    assert "RSA" in full_report_text
+    assert "AES-256-CBC" in full_report_text
+    assert "ASN.1 DER" in full_report_text
+    assert "Электронная подпись RSA/SHA-256" in full_report_text
+    assert "CRC32" in full_report_text
+    assert "Контрольные вопросы" in full_report_text
+    assert "Вывод" in full_report_text
+
+    forbidden_markers = ("Рџ", "Рґ", "СЊ", "С…", "TODO", "not_performed", "placeholder")
+    for path in generated_dir.glob("*.md"):
+        text = path.read_text(encoding="utf-8")
+        for marker in forbidden_markers:
+            assert marker not in text

@@ -79,6 +79,53 @@ report\generated
 
 Файлы из `report\generated` можно использовать для вставки в итоговый отчет.
 
+## Генерация материалов для отчёта
+
+```powershell
+cd C:\Users\Georgul\Documents\8_sem\KMZI\Lab1
+python scripts\generate_report_materials.py
+```
+
+Скрипт обновляет практические результаты, hex-дампы, демонстрацию CRC32, теоретические сведения, ответы на контрольные вопросы и черновик полного отчёта. Временные ключи, подписи и файлы запуска создаются в `artifacts\report_run` и не добавляются в Git.
+
+## Файлы отчёта
+
+- `report/generated/report_data.md` - практические результаты лабораторной.
+- `report/generated/report_data.json` - те же данные в машинно-читаемом виде.
+- `report/generated/hex_dump.md` - первые байты DER-контейнеров и шифртекста.
+- `report/generated/crc32_demo.md` - отдельная демонстрация подбора D3.
+- `report/generated/theory.md` - теоретические сведения.
+- `report/generated/control_questions.md` - ответы на контрольные вопросы.
+- `report/generated/stand_commands.md` - команды для защиты.
+- `report/generated/full_report_draft.md` - собранный черновик отчёта.
+- `report/generated/verification_log.txt` - краткий лог проверок.
+
+## Команды для защиты
+
+```powershell
+cd C:\Users\Georgul\Documents\8_sem\KMZI\Lab1
+.\.venv\Scripts\Activate.ps1
+pytest -q
+python scripts\generate_report_materials.py
+Get-Content .\report\generated\verification_log.txt -Encoding UTF8
+
+python -m src.main keygen --bits 1024 --out artifacts
+python -m src.main encrypt --file data\message.txt --public-key artifacts\public.json --out artifacts\message.enc --debug-json artifacts\encrypt_debug.json
+python -m src.main decrypt --file artifacts\message.enc --private-key artifacts\private.json --out artifacts\message.dec
+python -m src.main sign-sha256 --file data\message.txt --private-key artifacts\private.json --signature artifacts\message.sha256.sig
+python -m src.main verify-sha256 --file data\message.txt --public-key artifacts\public.json --signature artifacts\message.sha256.sig
+python -m src.main sign-crc32 --file data\d1.txt --private-key artifacts\private.json --signature artifacts\d1.crc32.sig
+python -m src.main verify-crc32 --file data\d1.txt --public-key artifacts\public.json --signature artifacts\d1.crc32.sig
+python -m src.main forge-crc32 --original data\d1.txt --modified data\d2.txt --out artifacts\d3.txt
+python -m src.main verify-crc32 --file artifacts\d3.txt --public-key artifacts\public.json --signature artifacts\d1.crc32.sig
+
+Format-Hex .\artifacts\message.enc | Select-Object -First 1
+Format-Hex .\artifacts\message.sha256.sig | Select-Object -First 1
+Format-Hex .\artifacts\d1.crc32.sig | Select-Object -First 1
+```
+
+Ожидаемый первый байт DER-контейнеров: `30`, ASN.1 DER `SEQUENCE`.
+
 ## ASN.1 DER Container
 
 Encrypted files are stored as a DER `SEQUENCE`:
