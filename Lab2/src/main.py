@@ -1,4 +1,4 @@
-"""Command line interface for KMZI Lab2."""
+"""CLI для запуска учебных демонстраций KMZI Lab2."""
 
 from __future__ import annotations
 
@@ -18,10 +18,12 @@ from .wiener import generate_wiener_vulnerable_key, wiener_attack
 
 
 def _read_json(path: Path) -> dict[str, Any]:
+    # JSON-файлы служат простым входным форматом для защиты и отчета.
     return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _write_json(path: Path, data: dict[str, Any]) -> None:
+    # Демо-команда сохраняет входы для всех атак в выбранный каталог.
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -39,6 +41,7 @@ def _json_ready(value: Any) -> Any:
 
 
 def _cmd_common_modulus(args: argparse.Namespace) -> int:
+    # Подкоманда запускает атаку общего модуля по n, e_b, d_b и e_a.
     data = _read_json(Path(args.json))
     p, q, d_a = recover_from_known_private_exponent(
         int(data["n"]),
@@ -51,6 +54,7 @@ def _cmd_common_modulus(args: argparse.Namespace) -> int:
 
 
 def _cmd_wiener(args: argparse.Namespace) -> int:
+    # Подкоманда проверяет, восстанавливается ли d атакой Винера.
     data = _read_json(Path(args.json))
     result = wiener_attack(int(data["n"]), int(data["e"]))
     print(json.dumps({"found": result is not None, "result": result}, indent=2))
@@ -58,6 +62,7 @@ def _cmd_wiener(args: argparse.Namespace) -> int:
 
 
 def _cmd_broadcast(args: argparse.Namespace) -> int:
+    # Подкоманда применяет широковещательную атаку к списку пар (n_i, c_i).
     data = _read_json(Path(args.json))
     pairs = [(int(item["n"]), int(item["c"])) for item in data["pairs"]]
     message = recover_broadcast_message(int(data["e"]), pairs)
@@ -66,6 +71,8 @@ def _cmd_broadcast(args: argparse.Namespace) -> int:
 
 
 def _cmd_small_order(args: argparse.Namespace) -> int:
+    # Подкоманда выполняет бесключевое дешифрование через цикл повторного
+    # возведения в степень e.
     data = _read_json(Path(args.json))
     message, iterations = recover_small_order_message(
         int(data["n"]),
@@ -77,6 +84,8 @@ def _cmd_small_order(args: argparse.Namespace) -> int:
 
 
 def _cmd_safe_keygen(args: argparse.Namespace) -> int:
+    # Подкоманда генерирует учебный RSA-ключ с базовыми проверками безопасности
+    # и сохраняет закрытые параметры в artifacts.
     private = generate_safe_rsa_params(args.bits)
     output = Path(args.out)
     save_private_key(output, private)
@@ -86,6 +95,7 @@ def _cmd_safe_keygen(args: argparse.Namespace) -> int:
 
 
 def _build_common_modulus_demo() -> dict[str, Any]:
+    # Демо для отчета: два открытых показателя используют один общий модуль.
     private_b, _ = generate_keypair(256, 65537)
     e_a = 17
     phi = (private_b.p - 1) * (private_b.q - 1)
@@ -111,6 +121,8 @@ def generate_keypair_from_existing_primes(p: int, q: int, e: int):
 
 
 def _cmd_demo(args: argparse.Namespace) -> int:
+    # Команда demo создает все JSON-входы и сводный файл результатов для
+    # быстрой демонстрации на защите.
     output = Path(args.out)
     if output.exists():
         shutil.rmtree(output)
@@ -150,30 +162,38 @@ def _cmd_demo(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    # Парсер CLI фиксирует имена подкоманд и аргументы; их нельзя менять без
+    # обновления README, тестов и материалов отчета.
     parser = argparse.ArgumentParser(description="KMZI Lab2 RSA attacks")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    # common-modulus: восстановление p, q и d_a при общем n.
     common = subparsers.add_parser("common-modulus")
     common.add_argument("--json", required=True)
     common.set_defaults(func=_cmd_common_modulus)
 
+    # wiener: атака на малый закрытый показатель d.
     wiener = subparsers.add_parser("wiener")
     wiener.add_argument("--json", required=True)
     wiener.set_defaults(func=_cmd_wiener)
 
+    # broadcast: атака Хостада для одного сообщения без padding.
     broadcast = subparsers.add_parser("broadcast")
     broadcast.add_argument("--json", required=True)
     broadcast.set_defaults(func=_cmd_broadcast)
 
+    # small-order: восстановление сообщения через короткий цикл e.
     small = subparsers.add_parser("small-order")
     small.add_argument("--json", required=True)
     small.set_defaults(func=_cmd_small_order)
 
+    # safe-keygen: генерация параметров с проверками против учебных слабостей.
     safe = subparsers.add_parser("safe-keygen")
     safe.add_argument("--bits", type=int, default=1024)
     safe.add_argument("--out", required=True)
     safe.set_defaults(func=_cmd_safe_keygen)
 
+    # demo: пакетная генерация входов для отчета и живой демонстрации.
     demo = subparsers.add_parser("demo")
     demo.add_argument("--out", required=True)
     demo.set_defaults(func=_cmd_demo)

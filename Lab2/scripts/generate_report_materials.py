@@ -1,4 +1,4 @@
-"""Generate reproducible report materials for KMZI Lab2."""
+"""Генерация воспроизводимых материалов отчета для KMZI Lab2."""
 
 from __future__ import annotations
 
@@ -23,12 +23,15 @@ from src.wiener import generate_wiener_vulnerable_key, wiener_attack
 
 
 def _clean_dir(path: Path) -> None:
+    # artifacts/report_run содержит временные данные конкретного запуска.
+    # Каталог очищается, чтобы отчет строился из актуального набора файлов.
     if path.exists():
         shutil.rmtree(path)
     path.mkdir(parents=True, exist_ok=True)
 
 
 def _write_json(path: Path, data: dict[str, Any]) -> None:
+    # report/generated содержит готовые материалы для вставки в отчет.
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
@@ -51,6 +54,8 @@ def _build_recipient_block(pairs: list[dict[str, int]]) -> str:
 
 
 def _build_markdown(data: dict[str, Any]) -> str:
+    # Основной Markdown собирает практическую часть: входы атак, восстановленные
+    # значения и проверочные условия OK/FAIL.
     common = data["common_modulus"]
     wiener = data["wiener"]
     broadcast = data["broadcast"]
@@ -230,6 +235,7 @@ def _build_markdown(data: dict[str, Any]) -> str:
 
 
 def _build_theory() -> str:
+    # Теоретический файл нужен как готовая вставка в отчет без запуска кода.
     return """# Теоретические сведения
 
 ## 1. RSA и роль показателей e и d
@@ -259,6 +265,7 @@ def _build_theory() -> str:
 
 
 def _build_control_questions() -> str:
+    # Ответы сформулированы кратко, в стиле контрольных вопросов к защите.
     return """# Контрольные вопросы
 
 ## 1. Почему знание d одного пользователя при общем n позволяет разложить n?
@@ -304,6 +311,7 @@ Padding вносит структуру и случайность, устран�
 
 
 def _build_stand_commands() -> str:
+    # Команды защиты дублируют реальные CLI-подкоманды и пути проекта.
     return r"""# Команды для защиты
 
 ## Проверка лабораторной
@@ -334,6 +342,8 @@ def _build_full_report_draft(
     theory: str,
     control_questions: str,
 ) -> str:
+    # Черновик объединяет теорию, практические результаты и ответы, чтобы его
+    # можно было использовать как основу финального отчета.
     theory_body = theory.removeprefix("# Теоретические сведения\n\n")
     control_body = control_questions.removeprefix("# Контрольные вопросы\n\n")
     practical_body = report_data.removeprefix("# Данные для отчёта Lab2\n\n")
@@ -378,6 +388,8 @@ def _build_full_report_draft(
 
 
 def _build_verification_log() -> str:
+    # Короткий лог удобен для быстрой проверки на защите и в автоматических
+    # тестах: каждая строка соответствует отдельной демонстрации.
     return "\n".join(
         [
             "common modulus attack OK",
@@ -391,12 +403,16 @@ def _build_verification_log() -> str:
 
 
 def generate_report_materials(lab_root: Path | None = None) -> dict[str, Any]:
+    # Весь workflow строит свежие временные артефакты и затем записывает
+    # отчетные файлы в report/generated, который можно коммитить.
     root = (lab_root or LAB_ROOT).resolve()
     artifacts = root / "artifacts" / "report_run"
     generated = root / "report" / "generated"
     _clean_dir(artifacts)
     generated.mkdir(parents=True, exist_ok=True)
 
+    # Демонстрация атаки общего модуля: известный d_b позволяет факторизовать
+    # общий n и восстановить d_a для другого открытого показателя.
     private_b, _ = generate_keypair(256, 65537)
     phi = (private_b.p - 1) * (private_b.q - 1)
     e_a = 17
@@ -405,22 +421,30 @@ def generate_report_materials(lab_root: Path | None = None) -> dict[str, Any]:
     private_a, _ = generate_keypair_from_primes(private_b.p, private_b.q, e_a)
     p, q, d_a = recover_from_known_private_exponent(private_b.n, private_b.e, private_b.d, e_a)
 
+    # Демонстрация Винера: ключ специально генерируется с малым d, чтобы атака
+    # была применима и отчет показывал успешное восстановление.
     vulnerable_private, vulnerable_public = generate_wiener_vulnerable_key(256)
     wiener_result = wiener_attack(vulnerable_public.n, vulnerable_public.e)
     assert wiener_result is not None
     vulnerable_bound, _ = integer_nth_root(vulnerable_public.n, 4)
     vulnerable_wiener_bound = vulnerable_bound // 3
 
+    # Широковещательная атака: одно сообщение шифруется нескольким получателям
+    # с одинаковым малым e и без padding.
     message_text = "KMZI Lab2"
     message_int = int.from_bytes(message_text.encode("utf-8"), "big")
     broadcast_demo = generate_broadcast_demo(e=3, recipients=3, bits=128, message_int=message_int)
     recovered_broadcast = recover_broadcast_message(broadcast_demo["e"], broadcast_demo["pairs"])
 
+    # Малый порядок e: используется детерминированный учебный пример, чтобы
+    # число итераций и восстановленное сообщение были понятны в отчете.
     small_demo = generate_small_order_demo()
     recovered_small, small_iterations = recover_small_order_message(
         small_demo["n"], small_demo["e"], small_demo["c"]
     )
 
+    # Безопасная генерация для сравнения: проверяем gcd(e, phi), границу
+    # Винера и отрицательный результат собственной атаки Винера.
     safe_private = generate_safe_rsa_params(512)
     safe_analysis = analyze_rsa_params(safe_private)
     safe_wiener = wiener_attack(safe_private.n, safe_private.e)
@@ -491,6 +515,8 @@ def generate_report_materials(lab_root: Path | None = None) -> dict[str, Any]:
         },
     }
 
+    # Финальный этап: формируем все Markdown/JSON материалы из одной структуры
+    # data, чтобы отчет и машинные проверки не расходились.
     report_data = _build_markdown(data)
     theory = _build_theory()
     control_questions = _build_control_questions()

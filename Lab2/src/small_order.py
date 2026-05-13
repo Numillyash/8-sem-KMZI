@@ -1,4 +1,4 @@
-"""Small-order public exponent attack demonstration."""
+"""Демонстрация атаки при малом порядке открытого показателя."""
 
 from __future__ import annotations
 
@@ -12,24 +12,32 @@ def recover_small_order_message(
     c: int,
     max_iterations: int = 100_000,
 ) -> tuple[int, int]:
-    """Recover m when repeated exponentiation cycles back to the ciphertext."""
+    """Восстановить m, когда повторное возведение в степень возвращает шифртекст."""
+    # Если e имеет малый порядок по модулю phi(n), повторное применение
+    # операции RSA-шифрования образует короткий цикл.
     c0 = c
     previous = c0
     current = c0
     for iteration in range(1, max_iterations + 1):
         current = pow(previous, e, n)
         if current == c0:
+            # Когда цикл вернулся к исходному шифртексту c0, предыдущий элемент
+            # цикла является открытым текстом для учебного примера.
             return previous, iteration
         previous = current
     raise ValueError("cycle was not found within max_iterations")
 
 
 def generate_small_order_demo() -> dict[str, int]:
-    """Return a deterministic small educational RSA instance."""
+    """Вернуть детерминированный малый учебный RSA-пример."""
+    # Малые p и q выбраны только для наглядной лабораторной демонстрации.
+    # Такие параметры не имеют промышленной криптографической стойкости.
     p = 23
     q = 47
     n = p * q
     phi = (p - 1) * (q - 1)
+    # Для выбранного phi показатель e имеет малый порядок, поэтому цикл
+    # повторного шифрования быстро раскрывает сообщение.
     e = 45
     d = mod_inverse(e, phi)
     order = 2

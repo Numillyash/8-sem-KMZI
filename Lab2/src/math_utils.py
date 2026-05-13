@@ -1,4 +1,4 @@
-"""Number theory helpers for educational RSA attacks."""
+"""Вспомогательные функции теории чисел для учебных атак на RSA."""
 
 from __future__ import annotations
 
@@ -10,7 +10,10 @@ gcd = math.gcd
 
 
 def extended_gcd(a: int, b: int) -> tuple[int, int, int]:
-    """Return gcd(a, b) and Bezout coefficients x, y."""
+    """Вернуть gcd(a, b) и коэффициенты Безу x, y."""
+    # Расширенный алгоритм Евклида одновременно находит НОД и коэффициенты
+    # x, y такие, что a*x + b*y = gcd(a, b). Эти коэффициенты нужны для
+    # вычисления обратного элемента по модулю.
     old_r, r = a, b
     old_s, s = 1, 0
     old_t, t = 0, 1
@@ -25,7 +28,9 @@ def extended_gcd(a: int, b: int) -> tuple[int, int, int]:
 
 
 def mod_inverse(a: int, m: int) -> int:
-    """Return a modular inverse of a modulo m."""
+    """Вернуть обратный элемент к a по модулю m."""
+    # Обратный элемент существует только при gcd(a, m) = 1. В RSA это условие
+    # используется для вычисления закрытого показателя d из e.
     g, x, _ = extended_gcd(a, m)
     if g != 1:
         raise ValueError("inverse does not exist")
@@ -33,7 +38,7 @@ def mod_inverse(a: int, m: int) -> int:
 
 
 def integer_nth_root(value: int, n: int) -> tuple[int, bool]:
-    """Return floor(value ** (1/n)) and whether the root is exact."""
+    """Вернуть floor(value ** (1/n)) и признак точного корня."""
     if value < 0:
         raise ValueError("value must be non-negative")
     if n <= 0:
@@ -41,6 +46,8 @@ def integer_nth_root(value: int, n: int) -> tuple[int, bool]:
     if value in (0, 1) or n == 1:
         return value, True
 
+    # Двоичный поиск работает только с целыми числами, поэтому не возникает
+    # ошибок округления, которые опасны для больших RSA-параметров.
     low, high = 0, 1 << ((value.bit_length() + n - 1) // n)
     while low <= high:
         mid = (low + high) // 2
@@ -55,7 +62,9 @@ def integer_nth_root(value: int, n: int) -> tuple[int, bool]:
 
 
 def continued_fraction(numerator: int, denominator: int) -> list[int]:
-    """Return the simple continued fraction of numerator / denominator."""
+    """Вернуть простую цепную дробь для numerator / denominator."""
+    # Цепные дроби используются в атаке Винера: малый d проявляется среди
+    # знаменателей подходящих дробей разложения e/n.
     if denominator == 0:
         raise ZeroDivisionError("denominator must be non-zero")
     terms: list[int] = []
@@ -67,7 +76,9 @@ def continued_fraction(numerator: int, denominator: int) -> list[int]:
 
 
 def convergents(cf: Sequence[int]) -> Iterator[tuple[int, int]]:
-    """Yield numerator, denominator convergents for a continued fraction."""
+    """Порождать числитель и знаменатель подходящих дробей."""
+    # Подходящие дроби строятся рекуррентно и дают лучшие рациональные
+    # приближения исходной дроби на каждом шаге.
     p_nm2, p_nm1 = 0, 1
     q_nm2, q_nm1 = 1, 0
     for a in cf:
@@ -79,7 +90,9 @@ def convergents(cf: Sequence[int]) -> Iterator[tuple[int, int]]:
 
 
 def crt(residues: Sequence[int], moduli: Sequence[int]) -> int:
-    """Solve x == residue_i (mod modulus_i) for pairwise coprime moduli."""
+    """Решить систему x == residue_i (mod modulus_i) для взаимно простых модулей."""
+    # Китайская теорема об остатках объединяет несколько сравнений в одно.
+    # В широковещательной атаке она восстанавливает целое значение m^e.
     if len(residues) != len(moduli) or not residues:
         raise ValueError("residues and moduli must have equal non-zero length")
     total_modulus = 1
@@ -96,7 +109,7 @@ def crt(residues: Sequence[int], moduli: Sequence[int]) -> int:
 
 
 def is_probable_prime(n: int, rounds: int = 32) -> bool:
-    """Miller-Rabin primality test with deterministic small-prime filtering."""
+    """Вероятностный тест Миллера-Рабина с предварительной проверкой малых простых."""
     if n < 2:
         return False
     small_primes = (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37)
@@ -106,12 +119,16 @@ def is_probable_prime(n: int, rounds: int = 32) -> bool:
         if n % prime == 0:
             return False
 
+    # Представляем n-1 как 2^r * d, где d нечетно. Это стандартная форма для
+    # раундов Миллера-Рабина.
     d = n - 1
     r = 0
     while d % 2 == 0:
         r += 1
         d //= 2
 
+    # Тест вероятностный: несколько независимых оснований резко снижают шанс
+    # принять составное число за простое. Для лабораторной этого достаточно.
     for _ in range(rounds):
         a = secrets.randbelow(n - 3) + 2
         x = pow(a, d, n)
@@ -127,9 +144,11 @@ def is_probable_prime(n: int, rounds: int = 32) -> bool:
 
 
 def generate_prime(bits: int) -> int:
-    """Generate a probable prime with exactly bits bits."""
+    """Сгенерировать вероятно простое число ровно bits бит."""
     if bits < 2:
         raise ValueError("bits must be at least 2")
+    # Кандидат принудительно делается нечетным и с установленным старшим битом,
+    # чтобы получить число нужной длины.
     while True:
         candidate = secrets.randbits(bits) | (1 << (bits - 1)) | 1
         if is_probable_prime(candidate):

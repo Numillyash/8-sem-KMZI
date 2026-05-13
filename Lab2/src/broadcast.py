@@ -1,4 +1,4 @@
-"""Hastad broadcast attack for small common RSA exponent."""
+"""Широковещательная атака Хостада для малого общего RSA-показателя."""
 
 from __future__ import annotations
 
@@ -9,15 +9,23 @@ from .rsa_core import PublicKey, encrypt_int, generate_keypair
 
 
 def recover_broadcast_message(e: int, pairs: Sequence[tuple[int, int]]) -> int:
+    # Атака требует как минимум e получателей, которым отправлено одно и то же
+    # сообщение без padding с одинаковым малым открытым показателем e.
     if len(pairs) < e:
         raise ValueError("at least e ciphertexts are required")
     moduli = [n for n, _ in pairs]
     ciphertexts = [c for _, c in pairs]
+    # Модули должны быть попарно взаимно простыми, иначе CRT в этой форме не
+    # применима и общий делитель уже сам по себе раскрывает факторизацию.
     for i, n_i in enumerate(moduli):
         for n_j in moduli[i + 1 :]:
             if gcd(n_i, n_j) != 1:
                 raise ValueError("moduli must be pairwise coprime")
+    # CRT восстанавливает x, сравнимый с m^e по каждому модулю n_i. При
+    # условии m^e < product(n_i) это не просто остаток, а само целое m^e.
     x = crt(ciphertexts, moduli)
+    # Последний шаг - точное извлечение корня степени e. Если корень не точный,
+    # входные данные не соответствуют классической атаке Хостада.
     root, exact = integer_nth_root(x, e)
     if not exact:
         raise ValueError("combined ciphertext is not an exact e-th power")
@@ -30,6 +38,8 @@ def generate_broadcast_demo(
     bits: int = 256,
     message_int: int | None = None,
 ) -> dict[str, object]:
+    # Генератор создает учебный набор получателей для отчета: одно сообщение,
+    # одинаковый e и разные взаимно простые RSA-модули.
     if recipients < e:
         raise ValueError("recipients must be at least e")
     message = message_int if message_int is not None else int.from_bytes(b"KMZI Lab2", "big")
