@@ -1,0 +1,4 @@
+Verification log
+original message: VALID
+modified message: INVALID
+corrupted signature: INVALID

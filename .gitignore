@@ -46,6 +46,11 @@ Lab2/artifacts/*
 !Lab2/artifacts/README.md
 Lab2/.venv/
 
+### Lab6 generated files
+Lab6/artifacts/*
+!Lab6/artifacts/.gitkeep
+!Lab6/artifacts/README.md
+
 # Jupyter Notebook
 .ipynb_checkpoints
 
