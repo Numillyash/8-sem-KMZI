@@ -11,6 +11,8 @@
 - CLI-команды `sign` и `verify`;
 - генератор материалов для отчёта.
 
+Коэффициент кривой `a` хранится в коде как `-1` для читаемости параметров варианта 8. В ASN.1 DER контейнере он записывается как `a mod p = p - 1`, потому что параметры конечного поля должны быть неотрицательными INTEGER.
+
 ## Подготовка окружения
 
 ```powershell
@@ -121,7 +123,11 @@ python -m src.main verify `
   --public-key artifacts\report_run\public_demo.json
 
 Format-Hex artifacts\report_run\message.sig -Count 96
+
+..\dumpasn1\dumpasn1.exe .\artifacts\report_run\message.sig
 ```
+
+Для `dumpasn1` ожидается результат без ошибок и предупреждений: `0 warnings, 0 errors`.
 
 ## Тесты
 

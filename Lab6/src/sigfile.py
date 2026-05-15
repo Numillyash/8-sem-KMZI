@@ -90,9 +90,10 @@ def encode_signature(payload: SignaturePayload) -> bytes:
     encoder.write(payload.p, asn1.Numbers.Integer)
     encoder.leave()
 
-    # Curve coefficients
+    # Curve coefficients. ASN.1 stores finite-field parameters as non-negative
+    # INTEGER values, so internal a = -1 is encoded as p - 1.
     encoder.enter(asn1.Numbers.Sequence)
-    encoder.write(payload.a, asn1.Numbers.Integer)
+    encoder.write(payload.a % payload.p, asn1.Numbers.Integer)
     encoder.write(payload.b, asn1.Numbers.Integer)
     encoder.leave()
 
@@ -174,7 +175,8 @@ def decode_signature(blob: bytes) -> SignaturePayload:
     decoder.leave()
 
     _expect_constructed(decoder, asn1.Numbers.Sequence)
-    a = int(_read_primitive(decoder, asn1.Numbers.Integer))
+    a_encoded = int(_read_primitive(decoder, asn1.Numbers.Integer))
+    a = -1 if a_encoded == p - 1 else a_encoded
     b = int(_read_primitive(decoder, asn1.Numbers.Integer))
     decoder.leave()
 

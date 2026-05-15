@@ -80,7 +80,9 @@ def _signature_fields(payload: SignaturePayload) -> dict[str, object]:
         "Q.x": payload.qx,
         "Q.y": payload.qy,
         "p": payload.p,
-        "a": payload.a,
+        "a_internal": payload.a,
+        "a_der_encoded": payload.a % payload.p,
+        "a_note": "internal -1 is encoded as p - 1 in DER",
         "b": payload.b,
         "P.x": payload.px,
         "P.y": payload.py,
@@ -133,6 +135,7 @@ def _write_report_data_md(path: Path, data: dict[str, object]) -> None:
 - Вариант кривой: variant 8 ({data["curve_id"]})
 - p = {data["p"]}
 - a = {data["a"]}
+- a в ASN.1 DER = {data["a_der_encoded"]} (то есть a mod p)
 - b = {data["b"]}
 - q = {data["q"]}
 - P.x = {data["px"]}
@@ -175,6 +178,9 @@ def _write_report_data_md(path: Path, data: dict[str, object]) -> None:
 ```
 
 ## Поля ASN.1 DER контейнера
+
+Коэффициент `a` внутри реализации хранится как `-1`, но в DER-контейнере
+записывается как неотрицательный представитель поля `a mod p = p - 1`.
 
 | Поле | Значение |
 | --- | --- |
@@ -299,7 +305,11 @@ python -m src.main verify `
   --public-key artifacts\report_run\public_demo.json
 
 Format-Hex artifacts\report_run\message.sig -Count 96
+
+..\dumpasn1\dumpasn1.exe .\artifacts\report_run\message.sig
 ```
+
+Ожидаемый результат для `dumpasn1`: 0 warnings, 0 errors.
 """,
         encoding="utf-8",
     )
@@ -343,7 +353,7 @@ def _write_full_report(path: Path, data: dict[str, object], verification_log: st
 
 ## ASN.1 контейнер подписи
 
-Контейнер содержит идентификатор алгоритма, метку ключа, открытый ключ Q, параметры кривой p, a, b, P.x, P.y, q и значения подписи r, s.
+Контейнер содержит идентификатор алгоритма, метку ключа, открытый ключ Q, параметры кривой p, a, b, P.x, P.y, q и значения подписи r, s. Внутреннее значение `a = -1` кодируется в DER как `a mod p = p - 1`, потому что параметры конечного поля записываются неотрицательными INTEGER.
 
 Первые байты:
 
@@ -444,6 +454,7 @@ def generate(lab6_dir: Path = LAB6_DIR) -> dict[str, object]:
         "curve_id": VARIANT_8.curve_id,
         "p": VARIANT_8.p,
         "a": VARIANT_8.a,
+        "a_der_encoded": VARIANT_8.a % VARIANT_8.p,
         "b": VARIANT_8.b,
         "q": VARIANT_8.q,
         "px": VARIANT_8.px,
