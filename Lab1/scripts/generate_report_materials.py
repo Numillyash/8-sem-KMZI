@@ -117,11 +117,13 @@ def _build_report_markdown(data: dict[str, Any]) -> str:
 ```
 
 Размер исходного файла: **{files["original_message_size"]} байт**.
-Размер DER-контейнера: **{files["encrypted_container_size"]} байт**.
+Размер DER-заголовка: **{files["header_length"]} байт**.
+Размер raw AES-CBC ciphertext: **{files["ciphertext_length"]} байт**.
+Размер полного файла (`header || ciphertext`): **{files["encrypted_container_size"]} байт**.
 
-**Первые 100 байт DER-контейнера, hex:**
+**Первые 100 байт DER-заголовка, hex:**
 ```text
-{_hex_block(files["container_first_100_hex"])}
+{_hex_block(files["header_first_100_hex"])}
 ```
 
 **Первые 100 байт AES ciphertext, hex:**
@@ -152,7 +154,7 @@ def _build_report_markdown(data: dict[str, Any]) -> str:
 **Подпись RSA/SHA-256:**
 {_code_block(sha["signature_integer"])}
 
-Подпись хранится в ASN.1 DER-контейнере `SignatureFile`.
+Подпись хранится в ASN.1 DER-контейнере методического формата `SEQUENCE -> SET -> SEQUENCE`.
 
 **DER RSA/SHA-256, first 100 bytes, hex:**
 ```text
@@ -162,7 +164,7 @@ def _build_report_markdown(data: dict[str, Any]) -> str:
 Проверка исходного файла: **{sha["original_verification"]}**.
 Проверка измененного файла: **{sha["modified_verification"]}**.
 
-При проверке подписи хэш файла вычисляется заново, затем проверяется равенство `signature^e mod n == SHA-256(file) mod n`. Значение `hashValue` в контейнере используется как сохраненная диагностическая информация, но корректность подписи определяется пересчетом данных.
+При проверке подписи хэш файла вычисляется заново по проверяемому файлу, затем проверяется равенство `signature^e mod n == SHA-256(file) mod n`. Поля hashValue/hashModN в методическом контейнере отсутствуют.
 
 ## 5. Дополнительное задание: RSA/CRC32
 
@@ -175,7 +177,7 @@ CRC32(D3): **{crc["d3_crc32_hex"]}** / **{crc["d3_crc32_decimal"]}**.
 **Подпись RSA/CRC32 для D1:**
 {_code_block(crc["signature_integer"])}
 
-Подпись RSA/CRC32 хранится в ASN.1 DER-контейнере `SignatureFile`.
+Подпись RSA/CRC32 хранится в том же методическом DER-формате, но с algorithm_id `00 41`.
 
 **DER RSA/CRC32, first 100 bytes, hex:**
 ```text
@@ -234,10 +236,10 @@ def _build_hex_dump(data: dict[str, Any]) -> str:
     files = data["files"]
     return f"""# Hex dump для Lab1
 
-## Первые 100 байт DER-контейнера
+## Первые 100 байт DER-заголовка
 
 ```text
-{_hex_block(files["container_first_100_hex"])}
+{_hex_block(files["header_first_100_hex"])}
 ```
 
 ## DER RSA/SHA-256 signature container, first 100 bytes
@@ -321,28 +323,43 @@ AES-256 использует ключ длиной 256 бит и размер б
 
 ## 4. ASN.1 DER-контейнер
 
-Структурированный бинарный контейнер нужен, чтобы хранить вместе версию формата, RSA-зашифрованный ключ, IV, шифртекст и параметры подписи без неоднозначного разбора. DER является однозначным бинарным кодированием ASN.1.
+ASN.1 DER используется только для заголовка зашифрованного файла. Сам шифртекст AES-CBC хранится как raw-байты сразу после DER-заголовка. DER является однозначным бинарным кодированием ASN.1.
 
 Зашифрованный файл хранится как:
 
 ```text
-EncryptedFile ::= SEQUENCE {
-  version INTEGER,
-  encryptedKey OCTET STRING,
-  iv OCTET STRING,
-  ciphertext OCTET STRING
+SEQUENCE {
+  SET {
+    SEQUENCE {
+      OCTET STRING algorithm_id      -- 00 01
+      UTF8String key_label           -- rsaKey
+      SEQUENCE { INTEGER n, INTEGER e }
+      SEQUENCE {}
+      SEQUENCE { INTEGER c }
+    }
+  }
+  SEQUENCE {
+    OCTET STRING symmetric_algorithm_id  -- 10 82
+    INTEGER original_file_length
+    OCTET STRING iv
+  }
 }
 ```
 
 Файл подписи хранится как:
 
 ```text
-SignatureFile ::= SEQUENCE {
-  version INTEGER,
-  algorithm UTF8String,
-  hashValue OCTET STRING,
-  hashModN INTEGER,
-  signature INTEGER
+SEQUENCE {
+  SET {
+    SEQUENCE {
+      OCTET STRING algorithm_id      -- 00 40 (SHA-256) / 00 41 (CRC32)
+      UTF8String key_label           -- rsaSha256Sign / rsaCrc32Sign
+      SEQUENCE { INTEGER n, INTEGER e }
+      SEQUENCE {}
+      SEQUENCE { INTEGER s }
+    }
+  }
+  SEQUENCE {}
 }
 ```
 
@@ -375,11 +392,11 @@ IV задает начальное значение цепочки CBC. Он д�
 
 ## 4. Что хранится в ASN.1 DER-контейнере зашифрованного файла?
 
-Версия формата, RSA-зашифрованный AES-ключ, IV и AES-шифртекст файла.
+DER-заголовок с RSA-зашифрованным AES-ключом, идентификаторами алгоритмов, длиной исходного файла и IV. После DER-заголовка в файле идут raw AES-CBC ciphertext байты.
 
 ## 5. Что хранится в ASN.1 DER-контейнере подписи?
 
-Версия, имя алгоритма, сохраненное значение хэша, хэш как число по модулю `n` и целое значение RSA-подписи.
+Algorithm id, key label, открытый ключ `n,e`, пустые params и целое значение RSA-подписи `s`.
 
 ## 6. Как формируется RSA/SHA-256 подпись?
 
@@ -389,9 +406,9 @@ IV задает начальное значение цепочки CBC. Он д�
 
 Проверяющая сторона заново вычисляет SHA-256 файла, получает `h`, затем проверяет, что `s^e mod n == h`.
 
-## 8. Почему при проверке нельзя доверять hashValue из контейнера без пересчёта?
+## 8. Почему при проверке подписи хэш нужно вычислять заново по файлу?
 
-Контейнер может быть изменен вместе с файлом. Если не пересчитывать хэш по реальным данным, проверка подтвердит не содержимое файла, а только сохраненное в контейнере значение.
+Контейнер может быть изменен вместе с файлом. Корректность подписи определяется только пересчетом хэша по проверяемым данным и проверкой RSA-соотношения.
 
 ## 9. Чем CRC32 отличается от SHA-256?
 
@@ -584,12 +601,15 @@ def generate_report_materials(lab_root: Path | None = None, bits: int = 1024) ->
             "original_message_size": len(message),
             "encrypted_container_size": len(container_bytes),
             "decrypted_equals_original": decrypted_equals_original,
+            "header_first_100_hex": debug["header_first_100_hex"],
             "container_first_100_hex": debug["container_first_100_hex"],
+            "header_length": debug["header_length"],
+            "ciphertext_length": debug["ciphertext_length"],
             "ciphertext_first_100_hex": debug["ciphertext_first_100_hex"],
         },
         "sha256_signature": {
             "digest_hex": sha_digest.hex(),
-            "h_sha256_mod_n": str(sha_loaded.hash_mod_n),
+            "h_sha256_mod_n": str(int.from_bytes(sha_digest, "big") % public_key.n),
             "signature_integer": str(sha_loaded.signature),
             "signature_der_first_100_hex": sha_signature_der[:100].hex(),
             "original_verification": _status(sha_original_valid),

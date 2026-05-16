@@ -1,4 +1,4 @@
-"""ASN.1 DER-контейнеры для файлов RSA-подписей."""
+"""ASN.1 DER containers for methodical RSA signatures (Appendix A)."""
 
 from __future__ import annotations
 
@@ -6,26 +6,25 @@ from dataclasses import dataclass
 
 
 SIGNATURE_VERSION = 1
+RSA_SHA256_ALGORITHM_ID = b"\x00\x40"
+RSA_CRC32_ALGORITHM_ID = b"\x00\x41"
+RSA_SHA256_KEY_LABEL = "rsaSha256Sign"
+RSA_CRC32_KEY_LABEL = "rsaCrc32Sign"
 
 
 @dataclass(frozen=True)
 class SignatureContainer:
-    """Структура SignatureFile.
-
-    algorithm указывает вариант подписи, hash_value хранит исходный digest,
-    hash_mod_n хранит digest как число после приведения по модулю n, а signature
-    содержит RSA-значение s = h^d mod n.
-    """
+    """Methodical signature structure with embedded public key and signature."""
 
     version: int
-    algorithm: str
-    hash_value: bytes
-    hash_mod_n: int
+    algorithm_id: bytes
+    key_label: str
+    rsa_n: int
+    rsa_e: int
     signature: int
 
 
 def _encode_length(length: int) -> bytes:
-    # DER кодирует каждое поле как TLV. Длина может быть короткой или длинной.
     if length < 0:
         raise ValueError("negative DER length")
     if length < 128:
@@ -39,7 +38,6 @@ def _encode_tlv(tag: int, value: bytes) -> bytes:
 
 
 def _encode_integer(value: int) -> bytes:
-    # DER INTEGER знаковый, поэтому для положительного числа иногда нужен ведущий 00.
     if value < 0:
         raise ValueError("only non-negative integers are supported")
     raw = b"\x00" if value == 0 else value.to_bytes((value.bit_length() + 7) // 8, "big")
@@ -48,32 +46,44 @@ def _encode_integer(value: int) -> bytes:
     return _encode_tlv(0x02, raw)
 
 
-def _encode_utf8_string(value: str) -> bytes:
-    # algorithm хранится как UTF8String: "rsa-sha256" или "rsa-crc32".
-    return _encode_tlv(0x0C, value.encode("utf-8"))
-
-
 def _encode_octet_string(value: bytes) -> bytes:
     return _encode_tlv(0x04, value)
 
 
+def _encode_utf8_string(value: str) -> bytes:
+    return _encode_tlv(0x0C, value.encode("utf-8"))
+
+
+def _encode_sequence(value: bytes) -> bytes:
+    return _encode_tlv(0x30, value)
+
+
+def _encode_set(value: bytes) -> bytes:
+    return _encode_tlv(0x31, value)
+
+
 def encode_signature_container(container: SignatureContainer) -> bytes:
-    # SignatureFile ::= SEQUENCE { version, algorithm, hashValue, hashModN, signature }.
-    body = b"".join(
-        (
-            _encode_integer(container.version),
-            _encode_utf8_string(container.algorithm),
-            _encode_octet_string(container.hash_value),
-            _encode_integer(container.hash_mod_n),
-            _encode_integer(container.signature),
+    public_key = _encode_sequence(_encode_integer(container.rsa_n) + _encode_integer(container.rsa_e))
+    params = _encode_sequence(b"")
+    signature = _encode_sequence(_encode_integer(container.signature))
+
+    algorithm_info = _encode_sequence(
+        b"".join(
+            (
+                _encode_octet_string(container.algorithm_id),
+                _encode_utf8_string(container.key_label),
+                public_key,
+                params,
+                signature,
+            )
         )
     )
-    return _encode_tlv(0x30, body)
+
+    body = _encode_set(algorithm_info) + _encode_sequence(b"")
+    return _encode_sequence(body)
 
 
 def _read_length(data: bytes, offset: int) -> tuple[int, int]:
-    # Декодер принимает только DER-форму: без неопределенной длины и без
-    # неминимального long-form кодирования.
     if offset >= len(data):
         raise ValueError("unexpected end of DER data")
     first = data[offset]
@@ -102,8 +112,6 @@ def _read_tlv(data: bytes, offset: int, expected_tag: int) -> tuple[bytes, int]:
 
 
 def _decode_integer(value: bytes) -> int:
-    # Отрицательные и неминимально закодированные INTEGER отклоняются, чтобы
-    # одна и та же подпись не имела нескольких допустимых бинарных представлений.
     if not value:
         raise ValueError("empty DER integer")
     if len(value) > 1 and value[0] == 0 and not (value[1] & 0x80):
@@ -114,24 +122,51 @@ def _decode_integer(value: bytes) -> int:
 
 
 def decode_signature_container(data: bytes) -> SignatureContainer:
-    # При чтении проверяем точный порядок полей и отсутствие хвостовых байтов.
     body, offset = _read_tlv(data, 0, 0x30)
     if offset != len(data):
         raise ValueError("trailing data after DER sequence")
 
     inner = 0
-    version_raw, inner = _read_tlv(body, inner, 0x02)
-    algorithm_raw, inner = _read_tlv(body, inner, 0x0C)
-    hash_value, inner = _read_tlv(body, inner, 0x04)
-    hash_mod_n_raw, inner = _read_tlv(body, inner, 0x02)
-    signature_raw, inner = _read_tlv(body, inner, 0x02)
+    set_body, inner = _read_tlv(body, inner, 0x31)
+    additional_data, inner = _read_tlv(body, inner, 0x30)
     if inner != len(body):
         raise ValueError("trailing data inside DER sequence")
+    if additional_data:
+        raise ValueError("signature additional data sequence must be empty")
+
+    set_inner = 0
+    algorithm_sequence, set_inner = _read_tlv(set_body, set_inner, 0x30)
+    if set_inner != len(set_body):
+        raise ValueError("unexpected data inside outer SET")
+
+    alg_inner = 0
+    algorithm_id, alg_inner = _read_tlv(algorithm_sequence, alg_inner, 0x04)
+    key_label_raw, alg_inner = _read_tlv(algorithm_sequence, alg_inner, 0x0C)
+    public_key_sequence, alg_inner = _read_tlv(algorithm_sequence, alg_inner, 0x30)
+    params_sequence, alg_inner = _read_tlv(algorithm_sequence, alg_inner, 0x30)
+    signature_sequence, alg_inner = _read_tlv(algorithm_sequence, alg_inner, 0x30)
+    if alg_inner != len(algorithm_sequence):
+        raise ValueError("trailing data inside algorithm sequence")
+
+    if params_sequence:
+        raise ValueError("signature params sequence must be empty")
+
+    pk_inner = 0
+    n_raw, pk_inner = _read_tlv(public_key_sequence, pk_inner, 0x02)
+    e_raw, pk_inner = _read_tlv(public_key_sequence, pk_inner, 0x02)
+    if pk_inner != len(public_key_sequence):
+        raise ValueError("trailing data inside RSA public key sequence")
+
+    sig_inner = 0
+    s_raw, sig_inner = _read_tlv(signature_sequence, sig_inner, 0x02)
+    if sig_inner != len(signature_sequence):
+        raise ValueError("trailing data inside signature sequence")
 
     return SignatureContainer(
-        version=_decode_integer(version_raw),
-        algorithm=algorithm_raw.decode("utf-8"),
-        hash_value=hash_value,
-        hash_mod_n=_decode_integer(hash_mod_n_raw),
-        signature=_decode_integer(signature_raw),
+        version=SIGNATURE_VERSION,
+        algorithm_id=algorithm_id,
+        key_label=key_label_raw.decode("utf-8"),
+        rsa_n=_decode_integer(n_raw),
+        rsa_e=_decode_integer(e_raw),
+        signature=_decode_integer(s_raw),
     )

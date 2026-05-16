@@ -40,11 +40,11 @@
   "verify_modified": "INVALID",
   "verify_corrupted": "INVALID",
   "paths": {
-    "message": "C:\\Users\\Georgul\\Documents\\8_sem\\KMZI\\Lab6\\artifacts\\report_run\\message.txt",
-    "modified_message": "C:\\Users\\Georgul\\Documents\\8_sem\\KMZI\\Lab6\\artifacts\\report_run\\message_modified.txt",
-    "private_key": "C:\\Users\\Georgul\\Documents\\8_sem\\KMZI\\Lab6\\artifacts\\report_run\\private_demo.json",
-    "public_key": "C:\\Users\\Georgul\\Documents\\8_sem\\KMZI\\Lab6\\artifacts\\report_run\\public_demo.json",
-    "signature": "C:\\Users\\Georgul\\Documents\\8_sem\\KMZI\\Lab6\\artifacts\\report_run\\message.sig",
-    "corrupted_signature": "C:\\Users\\Georgul\\Documents\\8_sem\\KMZI\\Lab6\\artifacts\\report_run\\message_corrupted.sig"
+    "message": "C:\\Users\\Georgul\\Documents\\8-sem\\8-sem-KMZI\\Lab6\\artifacts\\report_run\\message.txt",
+    "modified_message": "C:\\Users\\Georgul\\Documents\\8-sem\\8-sem-KMZI\\Lab6\\artifacts\\report_run\\message_modified.txt",
+    "private_key": "C:\\Users\\Georgul\\Documents\\8-sem\\8-sem-KMZI\\Lab6\\artifacts\\report_run\\private_demo.json",
+    "public_key": "C:\\Users\\Georgul\\Documents\\8-sem\\8-sem-KMZI\\Lab6\\artifacts\\report_run\\public_demo.json",
+    "signature": "C:\\Users\\Georgul\\Documents\\8-sem\\8-sem-KMZI\\Lab6\\artifacts\\report_run\\message.sig",
+    "corrupted_signature": "C:\\Users\\Georgul\\Documents\\8-sem\\8-sem-KMZI\\Lab6\\artifacts\\report_run\\message_corrupted.sig"
   }
 }

@@ -7,7 +7,14 @@ import secrets
 from pathlib import Path
 
 from src.aes import BLOCK_SIZE, decrypt_cbc, encrypt_cbc
-from src.der import EncryptedFileContainer, decode_container, encode_container
+from src.der import (
+    AES_CBC_ALGORITHM_ID,
+    DEFAULT_KEY_LABEL,
+    RSA_ALGORITHM_ID,
+    EncryptedFileContainer,
+    decode_container,
+    encode_container,
+)
 from src.rsa import (
     PrivateKey,
     PublicKey,
@@ -19,7 +26,6 @@ from src.rsa import (
 
 
 AES_KEY_SIZE = 32
-CONTAINER_VERSION = 1
 
 
 def encrypt_file(
@@ -29,39 +35,43 @@ def encrypt_file(
     debug_json_path: Path | None = None,
 ) -> None:
     plaintext = input_path.read_bytes()
-    # Для каждого шифрования создаются новый AES-256 ключ и новый IV.
     aes_key = secrets.token_bytes(AES_KEY_SIZE)
     iv = secrets.token_bytes(BLOCK_SIZE)
 
-    # RSA шифрует только короткий AES-ключ, а не весь файл.
-    encrypted_key_int = encrypt_integer(int_from_bytes(aes_key), public_key)
-    rsa_size = (public_key.n.bit_length() + 7) // 8
-    encrypted_key = int_to_fixed_bytes(encrypted_key_int, rsa_size)
-    # Содержимое файла шифруется блочным режимом AES-CBC с PKCS#7 padding.
+    encrypted_key_c = encrypt_integer(int_from_bytes(aes_key), public_key)
     ciphertext = encrypt_cbc(plaintext, aes_key, iv)
-    container = EncryptedFileContainer(
-        version=CONTAINER_VERSION,
-        encrypted_key=encrypted_key,
+
+    header = EncryptedFileContainer(
+        rsa_algorithm_id=RSA_ALGORITHM_ID,
+        key_label=DEFAULT_KEY_LABEL,
+        rsa_n=public_key.n,
+        rsa_e=public_key.e,
+        encrypted_key_c=encrypted_key_c,
+        symmetric_algorithm_id=AES_CBC_ALGORITHM_ID,
+        original_file_length=len(plaintext),
         iv=iv,
-        ciphertext=ciphertext,
     )
-    # Все поля складываются в структурированный ASN.1 DER-контейнер.
-    container_der = encode_container(container)
+    header_der = encode_container(header)
+    container_bytes = header_der + ciphertext
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_bytes(container_der)
+    output_path.write_bytes(container_bytes)
 
     if debug_json_path is not None:
-        # Debug JSON нужен только для отчета: он показывает ключевые промежуточные
-        # значения в hex и не должен использоваться как защищенный формат хранения.
         debug_json_path.parent.mkdir(parents=True, exist_ok=True)
+        rsa_size = (public_key.n.bit_length() + 7) // 8
         debug_json_path.write_text(
             json.dumps(
                 {
-                    "aes_key_hex": aes_key.hex(),
+                    "header_length": len(header_der),
+                    "ciphertext_length": len(ciphertext),
+                    "original_file_length": len(plaintext),
                     "iv_hex": iv.hex(),
-                    "encrypted_key_hex": encrypted_key.hex(),
+                    "encrypted_key_hex": int_to_fixed_bytes(encrypted_key_c, rsa_size).hex(),
+                    "header_first_100_hex": header_der[:100].hex(),
                     "ciphertext_first_100_hex": ciphertext[:100].hex(),
-                    "container_first_100_hex": container_der[:100].hex(),
+                    "container_first_100_hex": container_bytes[:100].hex(),
+                    "aes_key_hex": aes_key.hex(),
                 },
                 indent=2,
             ),
@@ -70,18 +80,15 @@ def encrypt_file(
 
 
 def decrypt_file(input_path: Path, private_key: PrivateKey, output_path: Path) -> None:
-    # Расшифрование начинается с разбора DER-контейнера и проверки версии.
-    container = decode_container(input_path.read_bytes())
-    if container.version != CONTAINER_VERSION:
-        raise ValueError(f"unsupported container version: {container.version}")
-    if len(container.iv) != BLOCK_SIZE:
+    parsed = decode_container(input_path.read_bytes())
+    header = parsed.header
+    if len(header.iv) != BLOCK_SIZE:
         raise ValueError("invalid IV length in container")
 
-    encrypted_key_int = int_from_bytes(container.encrypted_key)
-    # Закрытый RSA-ключ восстанавливает AES-ключ, после чего AES-CBC возвращает plaintext.
-    aes_key_int = decrypt_integer(encrypted_key_int, private_key)
+    aes_key_int = decrypt_integer(header.encrypted_key_c, private_key)
     aes_key = int_to_fixed_bytes(aes_key_int, AES_KEY_SIZE)
-    plaintext = decrypt_cbc(container.ciphertext, aes_key, container.iv)
+    plaintext = decrypt_cbc(parsed.ciphertext, aes_key, header.iv)
+    plaintext = plaintext[: header.original_file_length]
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_bytes(plaintext)

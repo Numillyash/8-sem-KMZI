@@ -47,7 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     verify_sha = subparsers.add_parser("verify-sha256", help="Verify RSA/SHA-256 signature")
     verify_sha.add_argument("--file", type=Path, required=True)
-    verify_sha.add_argument("--public-key", type=Path, required=True)
+    verify_sha.add_argument("--public-key", type=Path, help="Optional external public key for consistency check")
     verify_sha.add_argument("--signature", type=Path, required=True)
 
     sign_crc = subparsers.add_parser("sign-crc32", help="Sign file with RSA/CRC32")
@@ -57,7 +57,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     verify_crc = subparsers.add_parser("verify-crc32", help="Verify RSA/CRC32 signature")
     verify_crc.add_argument("--file", type=Path, required=True)
-    verify_crc.add_argument("--public-key", type=Path, required=True)
+    verify_crc.add_argument("--public-key", type=Path, help="Optional external public key for consistency check")
     verify_crc.add_argument("--signature", type=Path, required=True)
 
     forge = subparsers.add_parser("forge-crc32", help="Create D3 = D2 || patch with CRC32(D3)=CRC32(D1)")
@@ -104,10 +104,11 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.command == "verify-sha256":
             # INVALID возвращает код 1, чтобы CLI можно было использовать в скриптах.
+            external_public_key = load_public_key(args.public_key) if args.public_key else None
             ok = verify_sha256_container(
                 args.file.read_bytes(),
                 load_signature(args.signature),
-                load_public_key(args.public_key),
+                external_public_key,
             )
             print("VALID" if ok else "INVALID")
             return 0 if ok else 1
@@ -121,10 +122,11 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.command == "verify-crc32":
             # Проверка CRC32 использует тот же DER-контейнер, но другой algorithm id.
+            external_public_key = load_public_key(args.public_key) if args.public_key else None
             ok = verify_crc32_container(
                 args.file.read_bytes(),
                 load_signature(args.signature),
-                load_public_key(args.public_key),
+                external_public_key,
             )
             print("VALID" if ok else "INVALID")
             return 0 if ok else 1

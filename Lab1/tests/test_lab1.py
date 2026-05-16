@@ -10,7 +10,8 @@ from src.aes import decrypt_block, encrypt_block
 from src.crcforge import crc32_bytes, forge_crc32_file
 from src.hybrid import decrypt_file, encrypt_file
 from src.rsa import generate_keypair
-from src.sigder import SignatureContainer
+from src.der import AES_CBC_ALGORITHM_ID, RSA_ALGORITHM_ID, decode_container
+from src.sigder import RSA_CRC32_ALGORITHM_ID, RSA_SHA256_ALGORITHM_ID, SignatureContainer
 from src.signatures import (
     create_crc32_container,
     create_sha256_container,
@@ -48,7 +49,9 @@ def test_encrypt_decrypt_restores_original_file(tmp_path: Path) -> None:
     decrypt_file(encrypted, private_key, decrypted)
 
     assert decrypted.read_bytes() == source.read_bytes()
-    assert encrypted.read_bytes().startswith(b"\x30")
+    encoded = encrypted.read_bytes()
+    assert encoded.startswith(b"\x30")
+    assert b"\x31" in encoded
 
 
 def test_encrypt_debug_json_contains_key_and_iv(tmp_path: Path) -> None:
@@ -64,10 +67,13 @@ def test_encrypt_debug_json_contains_key_and_iv(tmp_path: Path) -> None:
     assert bytes.fromhex(debug["aes_key_hex"])
     assert len(bytes.fromhex(debug["aes_key_hex"])) == 32
     assert len(bytes.fromhex(debug["iv_hex"])) == 16
-    assert set(debug) == {
-        "aes_key_hex",
+    assert set(debug) >= {
+        "header_length",
+        "ciphertext_length",
+        "original_file_length",
         "iv_hex",
         "encrypted_key_hex",
+        "header_first_100_hex",
         "ciphertext_first_100_hex",
         "container_first_100_hex",
     }
@@ -93,7 +99,9 @@ def test_sha256_der_signature_file_verifies_original_and_fails_modified(tmp_path
     save_signature(signature_path, create_sha256_container(original, private_key))
     container = load_signature(signature_path)
 
-    assert signature_path.read_bytes().startswith(b"\x30")
+    encoded = signature_path.read_bytes()
+    assert encoded.startswith(b"\x30")
+    assert b"\x31" in encoded
     assert verify_sha256_container(original, container, public_key) is True
     assert verify_sha256_container(modified, container, public_key) is False
 
@@ -115,7 +123,9 @@ def test_crc32_der_signature_file_verifies_d1(tmp_path: Path) -> None:
     save_signature(signature_path, create_crc32_container(data, private_key))
     container = load_signature(signature_path)
 
-    assert signature_path.read_bytes().startswith(b"\x30")
+    encoded = signature_path.read_bytes()
+    assert encoded.startswith(b"\x30")
+    assert b"\x31" in encoded
     assert verify_crc32_container(data, container, public_key) is True
 
 
@@ -171,22 +181,62 @@ def test_der_signature_corruption_fails_verification(tmp_path: Path) -> None:
 
     bad_algorithm = SignatureContainer(
         version=container.version,
-        algorithm="rsa-crc32",
-        hash_value=container.hash_value,
-        hash_mod_n=container.hash_mod_n,
+        algorithm_id=RSA_CRC32_ALGORITHM_ID,
+        key_label=container.key_label,
+        rsa_n=container.rsa_n,
+        rsa_e=container.rsa_e,
         signature=container.signature,
     )
     assert verify_sha256_container(data, bad_algorithm, public_key) is False
 
     bad_signature = SignatureContainer(
         version=container.version,
-        algorithm=container.algorithm,
-        hash_value=container.hash_value,
-        hash_mod_n=container.hash_mod_n,
+        algorithm_id=container.algorithm_id,
+        key_label=container.key_label,
+        rsa_n=container.rsa_n,
+        rsa_e=container.rsa_e,
         signature=(container.signature + 1) % public_key.n,
     )
     assert verify_sha256_container(data, bad_signature, public_key) is False
 
+
+
+def test_algorithm_ids_in_containers(tmp_path: Path) -> None:
+    private_key, public_key = generate_keypair(512)
+
+    source = tmp_path / "message.bin"
+    source.write_bytes(b"\x00\x01binary\xff")
+    encrypted = tmp_path / "message.enc"
+    encrypt_file(source, public_key, encrypted)
+    parsed = decode_container(encrypted.read_bytes())
+    assert parsed.header.rsa_algorithm_id == RSA_ALGORITHM_ID
+    assert parsed.header.symmetric_algorithm_id == AES_CBC_ALGORITHM_ID
+    assert parsed.header_length > 0
+    assert parsed.ciphertext == encrypted.read_bytes()[parsed.header_length:]
+
+    sha_sig = create_sha256_container(source.read_bytes(), private_key)
+    assert sha_sig.algorithm_id == RSA_SHA256_ALGORITHM_ID
+
+    crc_sig = create_crc32_container(source.read_bytes(), private_key)
+    assert crc_sig.algorithm_id == RSA_CRC32_ALGORITHM_ID
+
+
+def test_encrypted_container_is_header_plus_raw_ciphertext(tmp_path: Path) -> None:
+    _, public_key = generate_keypair(512)
+    src = tmp_path / "bin.dat"
+    enc = tmp_path / "bin.enc"
+    src.write_bytes(b"\x00\xff" * 73 + b"tail")
+
+    encrypt_file(src, public_key, enc)
+    data = enc.read_bytes()
+    parsed = decode_container(data)
+
+    assert data.startswith(b"\x30")
+    assert parsed.header_length < len(data)
+    header_bytes = data[: parsed.header_length]
+    assert b"\x31" in header_bytes
+    assert parsed.ciphertext == data[parsed.header_length:]
+    assert parsed.ciphertext not in header_bytes
 
 def test_report_generator_creates_expected_files(tmp_path: Path) -> None:
     data_dir = tmp_path / "data"
@@ -228,6 +278,7 @@ def test_report_generator_creates_expected_files(tmp_path: Path) -> None:
     assert "AES-256-CBC" in full_report_text
     assert "ASN.1 DER" in full_report_text
     assert "Электронная подпись RSA/SHA-256" in full_report_text
+    assert "ciphertext OCTET STRING" not in full_report_text
     assert "CRC32" in full_report_text
     assert "Контрольные вопросы" in full_report_text
     assert "Вывод" in full_report_text

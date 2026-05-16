@@ -1,0 +1,271 @@
+PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI> 
+PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI> 
+PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI> cd C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1
+PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> 
+PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> python -m venv .venv
+PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> .\.venv\Scripts\Activate.ps1
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> pip install -r requirements.txt
+Collecting pytest (from -r requirements.txt (line 1))
+  Downloading pytest-9.0.3-py3-none-any.whl.metadata (7.6 kB)
+Collecting colorama>=0.4 (from pytest->-r requirements.txt (line 1))
+  Downloading colorama-0.4.6-py2.py3-none-any.whl.metadata (17 kB)
+Collecting iniconfig>=1.0.1 (from pytest->-r requirements.txt (line 1))
+  Downloading iniconfig-2.3.0-py3-none-any.whl.metadata (2.5 kB)
+Collecting packaging>=22 (from pytest->-r requirements.txt (line 1))
+  Downloading packaging-26.2-py3-none-any.whl.metadata (3.5 kB)
+Collecting pluggy<2,>=1.5 (from pytest->-r requirements.txt (line 1))
+  Downloading pluggy-1.6.0-py3-none-any.whl.metadata (4.8 kB)
+Collecting pygments>=2.7.2 (from pytest->-r requirements.txt (line 1))
+  Downloading pygments-2.20.0-py3-none-any.whl.metadata (2.5 kB)
+Downloading pytest-9.0.3-py3-none-any.whl (375 kB)
+Downloading pluggy-1.6.0-py3-none-any.whl (20 kB)
+Downloading colorama-0.4.6-py2.py3-none-any.whl (25 kB)
+Downloading iniconfig-2.3.0-py3-none-any.whl (7.5 kB)
+Downloading packaging-26.2-py3-none-any.whl (100 kB)
+Downloading pygments-2.20.0-py3-none-any.whl (1.2 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 4.1 MB/s  0:00:00
+Installing collected packages: pygments, pluggy, packaging, iniconfig, colorama, pytest
+Successfully installed colorama-0.4.6 iniconfig-2.3.0 packaging-26.2 pluggy-1.6.0 pygments-2.20.0 pytest-9.0.3
+[notice] A new release of pip is available: 26.0.1 -> 26.1.1    
+[notice] To update, run: python.exe -m pip install --upgrade pip
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> pytest -q
+............                                                                                           [100%]
+12 passed in 0.77s
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> cd C:\Users\Georgul\Documents\8-sem\8-sem-KMZI   
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI> 
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI> Get-ChildItem . -Recurse -File |
+>>   Where-Object { $_.Name -match "dumpasn.*\.exe$|dumpasn1.*\.exe$" } |
+>>   Select-Object FullName, Length
+
+FullName                                                              Length
+--------                                                              ------
+C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\dumpasn1\dumpasn1.exe     142640
+C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\dumpasn1\X64\dumpasn1.exe  52528
+
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI> 
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI>    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.2/1.2 MB 4.1 MB/s  0:00:00
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━: The term '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI> Installing collected packages: pygments, pluggy, packaging, iniconfig, colorama, pytest
+Installing: The term 'Installing' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI> Successfully installed colorama-0.4.6 iniconfig-2.3.0 
+packaging-26.2 pluggy-1.6.0 pygments-2.20.0 pytest-9.0.3
+Successfully: The term 'Successfully' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI> [notice] A new release of pip is available: 26.0.1 -> 
+26.1.1    
+ParserError: 
+Line |
+   1 |  [notice] A new release of pip is available: 26.0.1 -> 26.1.1
+     |           ~
+     | Unexpected token 'A' in expression or statement.
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI> [notice] To update, run: python.exe -m pip install --upgrade pip
+ParserError: 
+Line |
+   1 |  [notice] To update, run: python.exe -m pip install --upgrade pip
+     |           ~~
+     | Unexpected token 'To' in expression or statement.
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI> (.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> pytest -q
+ParserError: 
+Line |
+   1 |  (.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> pytest - …
+     |          ~~
+     | Unexpected token 'PS' in expression or statement.
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI> ............
+                                                 [100%]
+............: The term '............' is not recognized as a name of a cmdlet, function, script file, or executable program.
+Check the spelling of the name, or if a path was included, verify that the path is correct and try again.
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI> 12 passed in 0.77s
+ParserError: 
+Line |
+   1 |  12 passed in 0.77s
+     |     ~~~~~~
+     | Unexpected token 'passed' in expression or statement.
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI> (.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> cd C:\Users\Georgul\Documents\8-sem\8-sem-KMZI   
+ParserError: 
+Line |
+   1 |  (.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> cd C:\Us …
+     |          ~~
+     | Unexpected token 'PS' in expression or statement.
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI> (.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI> 
+ParserError: 
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI> cd C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> 
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> Copy-Item ..\dumpasn1\dumpasn1.exe .\data\dumpasn1.exe -Force
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> 
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> Get-Item .\data\dumpasn1.exe
+
+    Directory: C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1\data
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a---          14.05.2026     8:17         142640 dumpasn1.exe      
+
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> .\data\dumpasn1.exe
+DumpASN1 - ASN.1 object dump/syntax check program.
+Copyright Peter Gutmann 1997 - 2021.  Last updated 12 February 2021.        
+
+  --compiled for Windows (32-bit) on Nov  4 2025 17:16:58
+    by https://di-mgt.com.au/
+
+Usage: dumpasn1 [-acdefghilmoprstuvwxz] <file>
+  Input options:
+       - = Take input from stdin (some options may not work properly)       
+       -<number> = Start <number> bytes into the file
+       -- = End of arg list
+       -c<file> = Read Object Identifier info from alternate config file    
+            (values will override equivalents in global config file)        
+
+  Output options:
+       -f<file> = Dump object at offset -<number> to file (allows data to be
+            extracted from encapsulating objects)
+       -w<number> = Set width of output, default = 80 columns
+
+  Display options:
+       -a = Print all data in long data blocks, not just the first 128 bytes
+       -d = Print dots to show column alignment
+       -g = Display ASN.1 structure outline only (no primitive objects)     
+       -h = Hex dump object header (tag+length) before the decoded output   
+       -hh = Same as -h but display more of the object as hex data
+       -i = Use shallow indenting, for deeply-nested objects
+       -l = Long format, display extra info about Object Identifiers        
+       -m<number>  = Maximum nesting level for which to display content
+       -p = Pure ASN.1 output without encoding information
+       -t = Display text values next to hex dump of data
+       -v = Verbose mode, equivalent to -ahlt
+
+  Format options:
+       -e = Don't print encapsulated data inside OCTET/BIT STRINGs
+       -r = Print bits in BIT STRING as encoded in reverse order
+       -u = Don't format UTCTime/GeneralizedTime string data
+       -x = Display size and offset in hex not decimal
+
+  Checking options:
+       -o = Don't check validity of character strings hidden in octet strings
+       -s = Syntax check only, don't dump ASN.1 structures
+       -z = Allow zero-length items
+
+Warnings generated by deprecated OIDs require the use of '-l' to be displayed.
+Program return code is the number of errors found or EXIT_SUCCESS.
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> python -m src.main keygen --bits 1024 --out artifacts
+Keys saved to: artifacts
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> 
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> Get-ChildItem .\artifacts\private.json, .\artifacts\public.json
+
+    Directory: C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1\artifacts
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a---          14.05.2026    12:27            985 private.json
+-a---          14.05.2026    12:27            337 public.json
+
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> python -m src.main encrypt `
+>>   --file .\data\dumpasn1.exe `
+>>   --public-key .\artifacts\public.json `
+>>   --out .\artifacts\dumpasn1.exe.enc `
+>>   --debug-json .\artifacts\dumpasn1_encrypt_debug.json
+Encrypted file saved to: artifacts\dumpasn1.exe.enc
+Debug JSON saved to: artifacts\dumpasn1_encrypt_debug.json
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> Get-Item .\artifacts\dumpasn1.exe.enc
+
+    Directory: C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1\artifacts
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a---          14.05.2026    12:27         142818 dumpasn1.exe.enc
+
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> Format-Hex .\artifacts\dumpasn1.exe.enc | Select-Object -First 4
+
+   Label: C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1\artifacts\dumpasn1.exe.enc
+
+          Offset Bytes                                           Ascii
+                 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F
+          ------ ----------------------------------------------- -----
+0000000000000000 30 83 02 2D DD 02 01 01 04 81 80 9F 2C 61 B6 D5 0��-Ý�������,a¶Õ
+0000000000000010 27 70 38 C9 4E BE 46 A4 B9 63 B8 6F 01 13 36 BA 'p8ÉN¾F¤¹c¸o��6º
+0000000000000020 D8 0C 81 29 95 76 F3 F0 FE 5A 7D 36 0B AA E0 C3 Ø��)�vóðþZ}6�ªàÃ
+0000000000000030 33 55 6D 38 B2 FD D5 E2 D6 9B 32 3E 20 35 DF 98 3Um8²ýÕâÖ�2> 5ß�
+
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> python -m src.main decrypt `
+>>   --file .\artifacts\dumpasn1.exe.enc `
+>>   --private-key .\artifacts\private.json `
+>>   --out .\artifacts\dumpasn1.dec.exe
+Decrypted file saved to: artifacts\dumpasn1.dec.exe
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> Get-Item .\artifacts\dumpasn1.dec.exe
+
+    Directory: C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1\artifacts
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a---          14.05.2026    12:29         142640 dumpasn1.dec.exe
+
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> $h1 = Get-FileHash .\data\dumpasn1.exe -Algorithm SHA256
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> $h2 = Get-FileHash .\artifacts\dumpasn1.dec.exe -Algorithm SHA256
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> 
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> $h1
+
+Algorithm       Hash                                                                   Path
+---------       ----                                                                   ----
+SHA256          7F9AFE1744B7E2533607788460E0C2ED698A5C6E1476A5DCE71066052C2D469B       C:\Users\Georgul\Docu… 
+
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> $h2
+
+Algorithm       Hash                                                                   Path
+---------       ----                                                                   ----
+SHA256          7F9AFE1744B7E2533607788460E0C2ED698A5C6E1476A5DCE71066052C2D469B       C:\Users\Georgul\Docu… 
+
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> 
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> if ($h1.Hash -eq $h2.Hash) {
+>>   "OK: decrypted exe equals original"
+>> } else {
+>>   "FAIL: files differ"
+>> }
+OK: decrypted exe equals original
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1> .\artifacts\dumpasn1.dec.exe
+DumpASN1 - ASN.1 object dump/syntax check program.
+Copyright Peter Gutmann 1997 - 2021.  Last updated 12 February 2021.
+
+  --compiled for Windows (32-bit) on Nov  4 2025 17:16:58
+    by https://di-mgt.com.au/
+
+Usage: dumpasn1 [-acdefghilmoprstuvwxz] <file>
+  Input options:
+       - = Take input from stdin (some options may not work properly)
+       -<number> = Start <number> bytes into the file
+       -- = End of arg list
+       -c<file> = Read Object Identifier info from alternate config file
+            (values will override equivalents in global config file)
+
+  Output options:
+       -f<file> = Dump object at offset -<number> to file (allows data to be
+            extracted from encapsulating objects)
+       -w<number> = Set width of output, default = 80 columns
+
+  Display options:
+       -a = Print all data in long data blocks, not just the first 128 bytes
+       -d = Print dots to show column alignment
+       -g = Display ASN.1 structure outline only (no primitive objects)
+       -h = Hex dump object header (tag+length) before the decoded output
+       -hh = Same as -h but display more of the object as hex data
+       -i = Use shallow indenting, for deeply-nested objects
+       -l = Long format, display extra info about Object Identifiers
+       -m<number>  = Maximum nesting level for which to display content
+       -p = Pure ASN.1 output without encoding information
+       -t = Display text values next to hex dump of data
+       -v = Verbose mode, equivalent to -ahlt
+
+  Format options:
+       -e = Don't print encapsulated data inside OCTET/BIT STRINGs
+       -r = Print bits in BIT STRING as encoded in reverse order
+       -u = Don't format UTCTime/GeneralizedTime string data
+       -x = Display size and offset in hex not decimal
+
+  Checking options:
+       -o = Don't check validity of character strings hidden in octet strings
+       -s = Syntax check only, don't dump ASN.1 structures
+       -z = Allow zero-length items
+
+Warnings generated by deprecated OIDs require the use of '-l' to be displayed.
+Program return code is the number of errors found or EXIT_SUCCESS.
+(.venv) PS C:\Users\Georgul\Documents\8-sem\8-sem-KMZI\Lab1>

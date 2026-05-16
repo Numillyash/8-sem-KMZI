@@ -1,0 +1,44 @@
+python -m src.main keygen --bits 1024 --out artifacts
+Get-ChildItem .\artifacts\private.json, .\artifacts\public.json
+Get-Content .\artifacts\public.json
+
+python -m src.main encrypt `
+  --file .\data\message.txt `
+  --public-key .\artifacts\public.json `
+  --out .\artifacts\message.enc `
+  --debug-json .\artifacts\encrypt_debug.json
+
+1. Генерирует случайный AES-256 ключ.
+2. Генерирует IV для CBC.
+3. Шифрует файл через AES-256-CBC.
+4. AES-ключ шифрует RSA.
+5. Складывает encryptedKey, IV, ciphertext в ASN.1 DER-контейнер.
+
+Проверить DER:
+Format-Hex .\artifacts\dumpasn1.exe.enc | Select-Object -First 4
+
+python -m src.main decrypt `
+  --file .\artifacts\message.enc `
+  --private-key .\artifacts\private.json `
+  --out .\artifacts\message.dec
+
+1. Читает DER-контейнер.
+2. Извлекает RSA-зашифрованный AES-ключ.
+3. Расшифровывает AES-ключ закрытым RSA-ключом.
+4. Извлекает IV и ciphertext.
+5. Расшифровывает файл AES-256-CBC.
+6. Убирает PKCS#7 padding.
+
+7. Подпись RSA/SHA-256
+Подписать обычный файл:
+python -m src.main sign-sha256 `
+  --file .\data\message.txt `
+  --private-key .\artifacts\private.json `
+  --signature .\artifacts\message.sha256.sig
+
+Проверить подпись:
+python -m src.main verify-sha256 `
+  --file .\data\message.txt `
+  --public-key .\artifacts\public.json `
+  --signature .\artifacts\message.sha256.sig
+

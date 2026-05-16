@@ -20,28 +20,43 @@ AES-256 использует ключ длиной 256 бит и размер б
 
 ## 4. ASN.1 DER-контейнер
 
-Структурированный бинарный контейнер нужен, чтобы хранить вместе версию формата, RSA-зашифрованный ключ, IV, шифртекст и параметры подписи без неоднозначного разбора. DER является однозначным бинарным кодированием ASN.1.
+ASN.1 DER используется только для заголовка зашифрованного файла. Сам шифртекст AES-CBC хранится как raw-байты сразу после DER-заголовка. DER является однозначным бинарным кодированием ASN.1.
 
 Зашифрованный файл хранится как:
 
 ```text
-EncryptedFile ::= SEQUENCE {
-  version INTEGER,
-  encryptedKey OCTET STRING,
-  iv OCTET STRING,
-  ciphertext OCTET STRING
+SEQUENCE {
+  SET {
+    SEQUENCE {
+      OCTET STRING algorithm_id      -- 00 01
+      UTF8String key_label           -- rsaKey
+      SEQUENCE { INTEGER n, INTEGER e }
+      SEQUENCE {}
+      SEQUENCE { INTEGER c }
+    }
+  }
+  SEQUENCE {
+    OCTET STRING symmetric_algorithm_id  -- 10 82
+    INTEGER original_file_length
+    OCTET STRING iv
+  }
 }
 ```
 
 Файл подписи хранится как:
 
 ```text
-SignatureFile ::= SEQUENCE {
-  version INTEGER,
-  algorithm UTF8String,
-  hashValue OCTET STRING,
-  hashModN INTEGER,
-  signature INTEGER
+SEQUENCE {
+  SET {
+    SEQUENCE {
+      OCTET STRING algorithm_id      -- 00 40 (SHA-256) / 00 41 (CRC32)
+      UTF8String key_label           -- rsaSha256Sign / rsaCrc32Sign
+      SEQUENCE { INTEGER n, INTEGER e }
+      SEQUENCE {}
+      SEQUENCE { INTEGER s }
+    }
+  }
+  SEQUENCE {}
 }
 ```
 
