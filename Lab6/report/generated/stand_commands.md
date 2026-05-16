@@ -35,4 +35,8 @@ python -m src.main verify `
   --public-key artifacts\report_run\public_demo.json
 
 Format-Hex artifacts\report_run\message.sig -Count 96
+
+..\dumpasn1\dumpasn1.exe .\artifacts\report_run\message.sig
 ```
+
+Ожидаемый результат для `dumpasn1`: 0 warnings, 0 errors.
